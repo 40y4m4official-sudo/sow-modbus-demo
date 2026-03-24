@@ -7,11 +7,11 @@ import com.example.meterdemo.meter.model.MeterProfile
 object SampleMeterV1Profile {
     val profile = MeterProfile(
         modelId = "sample-meter-v1",
-        displayName = "研修用マルチメータ V1",
+        displayName = "サンプル電力量計 V1",
         slaveId = 2,
         baudRate = 19200,
         dataBits = 8,
-        parity = 2, // Even。後でUsbSerialPort.PARITY_EVENなどへ置き換え可
+        parity = 2, // Even parity. USB-RS485 実装時は使用ライブラリの定数へ合わせる。
         stopBits = 1,
         functionCode = 0x03,
         points = listOf(
