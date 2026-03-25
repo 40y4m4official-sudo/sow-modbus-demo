@@ -90,7 +90,7 @@ fun AddMeterScreen(
                 .verticalScroll(rememberScrollState())
         ) {
             Text(
-                text = "The standard 22 signal templates are preloaded. Fill in address and value settings as needed.",
+                text = "The standard 22 signal templates are preloaded. Leave address blank for signals you do not use.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

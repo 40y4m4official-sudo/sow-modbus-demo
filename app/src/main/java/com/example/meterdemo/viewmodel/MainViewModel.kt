@@ -337,7 +337,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
 
         val points = draft.registers.mapIndexed { index, register ->
-            val address = register.addressInput.toIntOrNull()
+            val trimmedAddress = register.addressInput.trim()
+            if (trimmedAddress.isEmpty()) {
+                return@mapIndexed null
+            }
+
+            val address = trimmedAddress.toIntOrNull()
             val gain = register.gainInput.toIntOrNull()
             val initialRawValue = register.initialRawValueInput.toIntOrNull()
 
@@ -356,6 +361,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 unit = register.unit,
                 initialRawValue = initialRawValue
             )
+        }.filterNotNull()
+
+        if (points.isEmpty()) {
+            logger.error("At least one register address is required")
+            return null
         }
 
         return MeterProfile(
