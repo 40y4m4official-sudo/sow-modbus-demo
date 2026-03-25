@@ -6,7 +6,8 @@ object MeterProfiles {
     private val profiles: List<MeterProfile> = listOf(
         SampleMeterV1Profile.profile,
         SampleMeterV2Profile.profile,
-        SampleMeterLiteProfile.profile
+        SampleMeterLiteProfile.profile,
+        BackUpCtProfile.profile
     )
 
     fun all(): List<MeterProfile> = profiles
