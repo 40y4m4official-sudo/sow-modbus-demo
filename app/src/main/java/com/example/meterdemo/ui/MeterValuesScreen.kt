@@ -26,6 +26,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.example.meterdemo.meter.model.DataType
 import com.example.meterdemo.viewmodel.MainUiState
 
 @Composable
@@ -155,8 +156,22 @@ fun MeterValuesScreen(
                 OutlinedTextField(
                     value = uiState.rawValueInput,
                     onValueChange = onRawValueChange,
-                    label = { Text("Raw Value") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    label = {
+                        Text(
+                            if (selectedPoint?.dataType == DataType.FLOAT32) {
+                                "Float Value"
+                            } else {
+                                "Raw Value"
+                            }
+                        )
+                    },
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = if (selectedPoint?.dataType == DataType.FLOAT32) {
+                            KeyboardType.Decimal
+                        } else {
+                            KeyboardType.Number
+                        }
+                    ),
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.height(12.dp))

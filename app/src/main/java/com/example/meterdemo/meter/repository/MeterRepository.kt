@@ -1,5 +1,6 @@
 package com.example.meterdemo.meter.repository
 
+import com.example.meterdemo.meter.model.DataType
 import com.example.meterdemo.meter.model.MeterPoint
 import com.example.meterdemo.meter.model.MeterProfile
 
@@ -95,6 +96,7 @@ class MeterRepository(
                 address = point.address,
                 registerCount = point.registerCount,
                 gain = point.gain,
+                dataType = point.dataType,
                 unit = point.unit,
                 rawValue = raw,
                 formattedValue = point.formattedValue(raw)
@@ -108,6 +110,7 @@ data class MeterValueSnapshot(
     val address: Int,
     val registerCount: Int,
     val gain: Double,
+    val dataType: DataType,
     val unit: String,
     val rawValue: Int,
     val formattedValue: String

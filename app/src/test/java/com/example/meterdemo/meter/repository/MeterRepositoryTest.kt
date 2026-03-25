@@ -1,5 +1,8 @@
 package com.example.meterdemo.meter.repository
 
+import com.example.meterdemo.meter.model.DataType
+import com.example.meterdemo.meter.model.MeterPoint
+import com.example.meterdemo.meter.model.MeterProfile
 import com.example.meterdemo.meter.profiles.MeterProfiles
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -71,6 +74,35 @@ class MeterRepositoryTest {
         val snapshot = repository.snapshot().first { it.address == 1304 }
 
         assertEquals(100.0, snapshot.gain, 0.0)
+    }
+
+    @Test
+    fun getFormattedValue_float32Point_decodesBitsAsFloat() {
+        repository = MeterRepository(
+            MeterProfile(
+                modelId = "float-meter",
+                displayName = "Float Meter",
+                slaveId = 2,
+                baudRate = 19200,
+                dataBits = 8,
+                parity = 2,
+                stopBits = 1,
+                functionCode = 0x03,
+                points = listOf(
+                    MeterPoint(
+                        name = "Power Factor",
+                        address = 1000,
+                        registerCount = 2,
+                        gain = 1.0,
+                        dataType = DataType.FLOAT32,
+                        unit = "",
+                        initialRawValue = 1.25f.toRawBits()
+                    )
+                )
+            )
+        )
+
+        assertEquals("1.25", repository.getFormattedValue(1000))
     }
 
     @Test

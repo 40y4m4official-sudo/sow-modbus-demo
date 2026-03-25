@@ -62,10 +62,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun applySelectedRawValue() {
         val state = _uiState.value
         val point = state.selectedPoint ?: return
-        val value = state.rawValueInput.toIntOrNull()
+        val value = parseRawValueInput(point, state.rawValueInput)
 
         if (value == null) {
-            logger.error("Raw value must be numeric")
+            logger.error("Value does not match ${point.dataType.name}")
             return
         }
 
@@ -370,6 +370,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 logger.error("Register ${index + 1} gain must be in range 0.0..1000000.0")
                 return null
             }
+            if (register.dataType == DataType.FLOAT32 && registerCount != 2) {
+                logger.error("Register ${index + 1} FLOAT32 requires word count 2")
+                return null
+            }
 
             MeterPoint(
                 name = register.name,
@@ -428,7 +432,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             points = snapshots,
             selectedPointIndex = safeIndex,
             selectedPoint = selectedPoint,
-            rawValueInput = rawValueInput ?: selectedPoint?.rawValue?.toString().orEmpty(),
+            rawValueInput = rawValueInput ?: selectedPoint?.let { formatRawValueInput(it) }.orEmpty(),
             editingExistingUserMeter = editingExistingUserMeter,
             selectedEditableUserModelId = selectedEditableUserModelId,
             editMeterDraft = editMeterDraft
@@ -448,7 +452,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             points = snapshots,
             selectedPointIndex = 0,
             selectedPoint = selectedPoint,
-            rawValueInput = selectedPoint?.rawValue?.toString().orEmpty(),
+            rawValueInput = selectedPoint?.let { formatRawValueInput(it) }.orEmpty(),
             editingExistingUserMeter = false,
             selectedEditableUserModelId = null,
             editMeterDraft = defaultMeterDraft(
@@ -516,6 +520,30 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             gain.toInt().toString()
         } else {
             gain.toString()
+        }
+    }
+
+    private fun formatRawValueInput(point: MeterValueSnapshot): String {
+        return when (point.dataType) {
+            DataType.FLOAT32 -> Float.fromBits(point.rawValue).toString()
+            DataType.UINT32 -> (point.rawValue.toLong() and 0xFFFFFFFFL).toString()
+            DataType.UINT16 -> (point.rawValue and 0xFFFF).toString()
+            else -> point.rawValue.toString()
+        }
+    }
+
+    private fun parseRawValueInput(point: MeterValueSnapshot, input: String): Int? {
+        return when (point.dataType) {
+            DataType.FLOAT32 -> input.toFloatOrNull()?.toRawBits()
+            DataType.UINT16 -> input.toLongOrNull()
+                ?.takeIf { it in 0..0xFFFF }
+                ?.toInt()
+
+            DataType.UINT32 -> input.toLongOrNull()
+                ?.takeIf { it in 0..0xFFFFFFFFL }
+                ?.toInt()
+
+            DataType.INT16, DataType.INT32 -> input.toIntOrNull()
         }
     }
 
