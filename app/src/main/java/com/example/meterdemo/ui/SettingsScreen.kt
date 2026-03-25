@@ -37,7 +37,7 @@ fun SettingsScreen(
     logs: List<CommLog>,
     onBack: () -> Unit,
     onProfileSelected: (String) -> Unit,
-    onOpenAddMeter: () -> Unit,
+    onOpenEditMeter: () -> Unit,
     onSlaveIdChange: (String) -> Unit,
     onApplySlaveId: () -> Unit,
     onOpenLogs: () -> Unit,
@@ -51,160 +51,158 @@ fun SettingsScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
             .padding(20.dp)
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(
-                text = "Settings",
-                style = MaterialTheme.typography.headlineMedium
-            )
-            OutlinedButton(onClick = onBack) {
-                Text("Back")
-            }
-        }
+        ScreenHeader(
+            title = "Settings",
+            trailingText = "Back",
+            onTrailingClick = onBack
+        )
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        Card(modifier = Modifier.fillMaxWidth()) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text(
-                    text = "Meter Preset",
-                    style = MaterialTheme.typography.titleMedium
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                OutlinedButton(
-                    onClick = { presetExpanded = !presetExpanded },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(uiState.profileName)
-                }
-                if (presetExpanded) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 6.dp)
-                            .background(
-                                color = MaterialTheme.colorScheme.surfaceContainerHighest,
-                                shape = RoundedCornerShape(18.dp)
-                            )
-                            .border(
-                                width = 1.dp,
-                                color = MaterialTheme.colorScheme.outlineVariant,
-                                shape = RoundedCornerShape(18.dp)
-                            )
-                            .padding(8.dp)
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .verticalScroll(rememberScrollState())
+        ) {
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "Meter Preset",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    OutlinedButton(
+                        onClick = { presetExpanded = !presetExpanded },
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        uiState.profiles.forEach { profile ->
-                            OutlinedButton(
-                                onClick = {
-                                    presetExpanded = false
-                                    onProfileSelected(profile.modelId)
-                                },
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Text(profile.displayName)
+                        Text(uiState.profileName)
+                    }
+                    if (presetExpanded) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 6.dp)
+                                .background(
+                                    color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                                    shape = RoundedCornerShape(18.dp)
+                                )
+                                .border(
+                                    width = 1.dp,
+                                    color = MaterialTheme.colorScheme.outlineVariant,
+                                    shape = RoundedCornerShape(18.dp)
+                                )
+                                .padding(8.dp)
+                        ) {
+                            uiState.allProfiles.forEach { profile ->
+                                OutlinedButton(
+                                    onClick = {
+                                        presetExpanded = false
+                                        onProfileSelected(profile.modelId)
+                                    },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text(profile.displayName)
+                                }
+                                Spacer(modifier = Modifier.height(8.dp))
                             }
-                            Spacer(modifier = Modifier.height(8.dp))
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Button(
+                        onClick = onOpenEditMeter,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Edit Meter")
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    OutlinedTextField(
+                        value = uiState.slaveIdInput,
+                        onValueChange = onSlaveIdChange,
+                        label = { Text("Slave Address") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Button(
+                        onClick = onApplySlaveId,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Apply Slave Address")
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "Logs",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Entries: ${logs.size}",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Button(
+                            onClick = onOpenLogs,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("Open Logs")
+                        }
+                        OutlinedButton(
+                            onClick = onRefreshLogs,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("Refresh Logs")
                         }
                     }
                 }
-                Spacer(modifier = Modifier.height(12.dp))
-                Button(
-                    onClick = onOpenAddMeter,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Add Meter")
-                }
-                Spacer(modifier = Modifier.height(12.dp))
-                OutlinedTextField(
-                    value = uiState.slaveIdInput,
-                    onValueChange = onSlaveIdChange,
-                    label = { Text("Slave Address") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                Button(
-                    onClick = onApplySlaveId,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Apply Slave Address")
-                }
             }
-        }
 
-        Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-        Card(modifier = Modifier.fillMaxWidth()) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text(
-                    text = "Logs",
-                    style = MaterialTheme.typography.titleMedium
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = "Entries: ${logs.size}",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "Comm Test",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Current item: ${uiState.selectedPoint?.name ?: "-"}",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
                     Button(
-                        onClick = onOpenLogs,
-                        modifier = Modifier.weight(1f)
+                        onClick = onSimulateRead,
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("Open Logs")
+                        Text("Run 03H Read")
                     }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    OutlinedTextField(
+                        value = customHex,
+                        onValueChange = { customHex = it },
+                        label = { Text("Custom HEX Request") },
+                        placeholder = { Text("02 03 03 00 00 01 44 F8") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
                     OutlinedButton(
-                        onClick = onRefreshLogs,
-                        modifier = Modifier.weight(1f)
+                        onClick = { onSimulateCustomRequest(customHex) },
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("Refresh Logs")
+                        Text("Send Custom Request")
                     }
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Card(modifier = Modifier.fillMaxWidth()) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text(
-                    text = "Comm Test",
-                    style = MaterialTheme.typography.titleMedium
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = "Current item: ${uiState.selectedPoint?.name ?: "-"}",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                Button(
-                    onClick = onSimulateRead,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Run 03H Read")
-                }
-                Spacer(modifier = Modifier.height(12.dp))
-                OutlinedTextField(
-                    value = customHex,
-                    onValueChange = { customHex = it },
-                    label = { Text("Custom HEX Request") },
-                    placeholder = { Text("02 03 03 00 00 01 44 F8") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                OutlinedButton(
-                    onClick = { onSimulateCustomRequest(customHex) },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Send Custom Request")
                 }
             }
         }

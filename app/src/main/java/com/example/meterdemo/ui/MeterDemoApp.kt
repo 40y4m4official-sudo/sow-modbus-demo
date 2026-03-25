@@ -12,7 +12,7 @@ private enum class Screen {
     Main,
     Settings,
     Logs,
-    AddMeter
+    EditMeter
 }
 
 @Composable
@@ -38,7 +38,7 @@ fun MeterDemoApp(viewModel: MainViewModel) {
             logs = logs,
             onBack = { currentScreen = Screen.Main },
             onProfileSelected = viewModel::selectProfile,
-            onOpenAddMeter = { currentScreen = Screen.AddMeter },
+            onOpenEditMeter = { currentScreen = Screen.EditMeter },
             onSlaveIdChange = viewModel::updateSlaveIdInput,
             onApplySlaveId = viewModel::applySlaveId,
             onOpenLogs = { currentScreen = Screen.Logs },
@@ -53,33 +53,31 @@ fun MeterDemoApp(viewModel: MainViewModel) {
             onClearLogs = viewModel::clearLogs
         )
 
-        Screen.AddMeter -> AddMeterScreen(
+        Screen.EditMeter -> EditMeterScreen(
             uiState = uiState,
             onBack = { currentScreen = Screen.Settings },
-            onProfileNameChange = viewModel::updateDraftProfileName,
-            onModelIdChange = viewModel::updateDraftModelId,
-            onSlaveIdChange = viewModel::updateDraftSlaveId,
+            onCreateMeter = viewModel::startNewUserMeter,
+            onSelectMeter = viewModel::selectEditableUserMeter,
+            onProfileNameChange = viewModel::updateEditDraftProfileName,
+            onModelIdChange = viewModel::updateEditDraftModelId,
+            onSlaveIdChange = viewModel::updateEditDraftSlaveId,
             onRegisterNameChange = { index, value ->
-                viewModel.updateDraftRegister(index) { copy(name = value) }
+                viewModel.updateEditDraftRegister(index) { copy(name = value) }
             },
             onRegisterAddressChange = { index, value ->
-                viewModel.updateDraftRegister(index) { copy(addressInput = value) }
+                viewModel.updateEditDraftRegister(index) { copy(addressInput = value) }
             },
             onRegisterGainChange = { index, value ->
-                viewModel.updateDraftRegister(index) { copy(gainInput = value) }
+                viewModel.updateEditDraftRegister(index) { copy(gainInput = value) }
             },
             onRegisterUnitChange = { index, value ->
-                viewModel.updateDraftRegister(index) { copy(unit = value) }
+                viewModel.updateEditDraftRegister(index) { copy(unit = value) }
             },
             onRegisterInitialValueChange = { index, value ->
-                viewModel.updateDraftRegister(index) { copy(initialRawValueInput = value) }
+                viewModel.updateEditDraftRegister(index) { copy(initialRawValueInput = value) }
             },
-            onAddRegister = viewModel::addDraftRegister,
-            onSave = {
-                if (viewModel.saveDraftProfile()) {
-                    currentScreen = Screen.Settings
-                }
-            }
+            onAddRegister = viewModel::addEditDraftRegister,
+            onSave = viewModel::saveEditDraft
         )
     }
 }
