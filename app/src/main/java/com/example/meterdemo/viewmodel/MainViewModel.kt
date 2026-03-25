@@ -7,6 +7,7 @@ import com.example.meterdemo.logging.CommLogger
 import com.example.meterdemo.meter.model.DataType
 import com.example.meterdemo.meter.model.MeterPoint
 import com.example.meterdemo.meter.model.MeterProfile
+import com.example.meterdemo.meter.model.WordByteOrder
 import com.example.meterdemo.meter.profiles.MeterProfiles
 import com.example.meterdemo.meter.repository.MeterRepository
 import com.example.meterdemo.meter.repository.MeterValueSnapshot
@@ -207,6 +208,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         refreshUiState(editMeterDraft = _uiState.value.editMeterDraft.copy(slaveIdInput = value))
     }
 
+    fun updateEditDraftFunctionCode(value: Int) {
+        refreshUiState(editMeterDraft = _uiState.value.editMeterDraft.copy(functionCode = value))
+    }
+
     fun updateEditDraftRegister(index: Int, update: MeterRegisterDraft.() -> MeterRegisterDraft) {
         val state = _uiState.value
         if (index !in state.editMeterDraft.registers.indices) return
@@ -225,7 +230,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             gainInput = "1",
             unit = "",
             initialRawValueInput = "0",
-            dataType = DataType.INT16
+            dataType = DataType.INT16,
+            wordByteOrder = WordByteOrder.MSB_MSB
         )
         refreshUiState(editMeterDraft = state.editMeterDraft.copy(registers = updatedRegisters))
     }
@@ -284,13 +290,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun simulateRead(address: Int) {
+        val registerCount = repository.findPoint(address)?.registerCount ?: 1
         val requestWithoutCrc = byteArrayOf(
             repository.getSlaveId().toByte(),
             repository.getFunctionCode().toByte(),
             ((address shr 8) and 0xFF).toByte(),
             (address and 0xFF).toByte(),
             0x00,
-            0x01
+            registerCount.toByte()
         )
 
         val request = ModbusCrc.appendCrc(requestWithoutCrc)
@@ -323,6 +330,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             logger.error("Draft Slave ID must be in range 1..247")
             return null
         }
+        if (draft.functionCode !in setOf(0x03, 0x04)) {
+            logger.error("Read function must be 03H or 04H")
+            return null
+        }
 
         val points = draft.registers.mapIndexed { index, register ->
             val address = register.addressInput.toIntOrNull()
@@ -337,9 +348,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             MeterPoint(
                 name = register.name,
                 address = address,
-                registerCount = 1,
+                registerCount = register.dataType.registerCount,
                 gain = gain,
                 dataType = register.dataType,
+                wordByteOrder = register.wordByteOrder,
                 unit = register.unit,
                 initialRawValue = initialRawValue
             )
@@ -353,7 +365,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             dataBits = 8,
             parity = 2,
             stopBits = 1,
-            functionCode = 0x03,
+            functionCode = draft.functionCode,
             points = points
         )
     }
@@ -425,6 +437,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             displayName = displayName,
             modelId = modelId,
             slaveIdInput = slaveId.toString(),
+            functionCode = 0x03,
             registers = listOf(
                 MeterRegisterDraft("Phase A Current", "768", "1", "A", "15"),
                 MeterRegisterDraft("Phase B Current", "769", "1", "A", "16"),
@@ -444,6 +457,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             displayName = displayName,
             modelId = modelId,
             slaveIdInput = slaveId.toString(),
+            functionCode = functionCode,
             registers = points.map { point ->
                 MeterRegisterDraft(
                     name = point.name,
@@ -451,7 +465,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     gainInput = point.gain.toString(),
                     unit = point.unit,
                     initialRawValueInput = point.initialRawValue.toString(),
-                    dataType = point.dataType
+                    dataType = point.dataType,
+                    wordByteOrder = point.wordByteOrder
                 )
             }
         )
@@ -526,6 +541,7 @@ data class MeterEditorDraft(
     val displayName: String,
     val modelId: String,
     val slaveIdInput: String,
+    val functionCode: Int,
     val registers: List<MeterRegisterDraft>
 )
 
@@ -535,5 +551,6 @@ data class MeterRegisterDraft(
     val gainInput: String,
     val unit: String,
     val initialRawValueInput: String,
-    val dataType: DataType = DataType.INT16
+    val dataType: DataType = DataType.INT16,
+    val wordByteOrder: WordByteOrder = WordByteOrder.MSB_MSB
 )

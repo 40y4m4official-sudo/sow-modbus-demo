@@ -74,6 +74,7 @@ fun MeterDemoApp(viewModel: MainViewModel) {
             onProfileNameChange = viewModel::updateEditDraftProfileName,
             onModelIdChange = viewModel::updateEditDraftModelId,
             onSlaveIdChange = viewModel::updateEditDraftSlaveId,
+            onFunctionCodeChange = viewModel::updateEditDraftFunctionCode,
             onRegisterNameChange = { index, value ->
                 viewModel.updateEditDraftRegister(index) { copy(name = value) }
             },
@@ -88,6 +89,12 @@ fun MeterDemoApp(viewModel: MainViewModel) {
             },
             onRegisterInitialValueChange = { index, value ->
                 viewModel.updateEditDraftRegister(index) { copy(initialRawValueInput = value) }
+            },
+            onRegisterDataTypeChange = { index ->
+                viewModel.updateEditDraftRegister(index) { copy(dataType = dataType.next()) }
+            },
+            onRegisterWordByteOrderChange = { index ->
+                viewModel.updateEditDraftRegister(index) { copy(wordByteOrder = wordByteOrder.next()) }
             },
             onAddRegister = viewModel::addEditDraftRegister,
             onApply = {

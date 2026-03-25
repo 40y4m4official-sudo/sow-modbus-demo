@@ -35,11 +35,14 @@ fun AddMeterScreen(
     onProfileNameChange: (String) -> Unit,
     onModelIdChange: (String) -> Unit,
     onSlaveIdChange: (String) -> Unit,
+    onFunctionCodeChange: (Int) -> Unit,
     onRegisterNameChange: (Int, String) -> Unit,
     onRegisterAddressChange: (Int, String) -> Unit,
     onRegisterGainChange: (Int, String) -> Unit,
     onRegisterUnitChange: (Int, String) -> Unit,
     onRegisterInitialValueChange: (Int, String) -> Unit,
+    onRegisterDataTypeChange: (Int) -> Unit,
+    onRegisterWordByteOrderChange: (Int) -> Unit,
     onAddRegister: () -> Unit,
     onApply: () -> Unit
 ) {
@@ -114,6 +117,19 @@ fun AddMeterScreen(
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.fillMaxWidth()
                     )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    OutlinedButton(
+                        onClick = {
+                            onFunctionCodeChange(
+                                if (draft.functionCode == 0x03) 0x04 else 0x03
+                            )
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = "Read Function: ${if (draft.functionCode == 0x03) "03H Holding Registers" else "04H Input Registers"}"
+                        )
+                    }
                 }
             }
 
@@ -171,6 +187,32 @@ fun AddMeterScreen(
                                 modifier = Modifier.weight(1f)
                             )
                         }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        Row(modifier = Modifier.fillMaxWidth()) {
+                            OutlinedButton(
+                                onClick = { onRegisterDataTypeChange(index) },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text("Type: ${register.dataType.name}")
+                            }
+                            Spacer(modifier = Modifier.width(12.dp))
+                            OutlinedButton(
+                                onClick = { onRegisterWordByteOrderChange(index) },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text("Order: ${register.wordByteOrder.label}")
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Text(
+                            text = "Words: ${register.dataType.registerCount}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
                 Spacer(modifier = Modifier.height(12.dp))
