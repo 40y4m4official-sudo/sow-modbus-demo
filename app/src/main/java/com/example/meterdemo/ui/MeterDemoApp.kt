@@ -81,6 +81,9 @@ fun MeterDemoApp(viewModel: MainViewModel) {
             onRegisterAddressChange = { index, value ->
                 viewModel.updateEditDraftRegister(index) { copy(addressInput = value) }
             },
+            onRegisterCountChange = { index, value ->
+                viewModel.updateEditDraftRegister(index) { copy(registerCountInput = value) }
+            },
             onRegisterGainChange = { index, value ->
                 viewModel.updateEditDraftRegister(index) { copy(gainInput = value) }
             },

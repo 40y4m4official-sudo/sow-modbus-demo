@@ -228,6 +228,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val updatedRegisters = state.editMeterDraft.registers + MeterRegisterDraft(
             name = "Register $nextIndex",
             addressInput = "",
+            registerCountInput = "1",
             gainInput = "1",
             unit = "",
             initialRawValueInput = "0",
@@ -343,18 +344,37 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
 
             val address = trimmedAddress.toIntOrNull()
-            val gain = register.gainInput.toIntOrNull()
+            val registerCount = register.registerCountInput.toIntOrNull()
+            val gain = register.gainInput.toDoubleOrNull()
             val initialRawValue = register.initialRawValueInput.toIntOrNull()
 
-            if (register.name.isBlank() || address == null || gain == null || initialRawValue == null) {
+            if (
+                register.name.isBlank() ||
+                address == null ||
+                registerCount == null ||
+                gain == null ||
+                initialRawValue == null
+            ) {
                 logger.error("Register ${index + 1} has invalid values")
+                return null
+            }
+            if (address !in 0..65535) {
+                logger.error("Register ${index + 1} address must be in range 0..65535")
+                return null
+            }
+            if (registerCount !in 1..4) {
+                logger.error("Register ${index + 1} word count must be in range 1..4")
+                return null
+            }
+            if (gain !in 0.0..1_000_000.0) {
+                logger.error("Register ${index + 1} gain must be in range 0.0..1000000.0")
                 return null
             }
 
             MeterPoint(
                 name = register.name,
                 address = address,
-                registerCount = register.dataType.registerCount,
+                registerCount = registerCount,
                 gain = gain,
                 dataType = register.dataType,
                 wordByteOrder = register.wordByteOrder,
@@ -463,7 +483,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 MeterRegisterDraft(
                     name = point.name,
                     addressInput = point.address.toString(),
-                    gainInput = point.gain.toString(),
+                    registerCountInput = point.registerCount.toString(),
+                    gainInput = formatGain(point.gain),
                     unit = point.unit,
                     initialRawValueInput = point.initialRawValue.toString(),
                     dataType = point.dataType,
@@ -480,12 +501,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             MeterRegisterDraft(
                 name = template.name,
                 addressInput = "",
+                registerCountInput = "1",
                 gainInput = "1",
                 unit = template.unit,
                 initialRawValueInput = "0",
                 dataType = DataType.INT16,
                 wordByteOrder = WordByteOrder.MSB_MSB
             )
+        }
+    }
+
+    private fun formatGain(gain: Double): String {
+        return if (gain == gain.toInt().toDouble()) {
+            gain.toInt().toString()
+        } else {
+            gain.toString()
         }
     }
 
@@ -563,6 +593,7 @@ data class MeterEditorDraft(
 data class MeterRegisterDraft(
     val name: String,
     val addressInput: String,
+    val registerCountInput: String,
     val gainInput: String,
     val unit: String,
     val initialRawValueInput: String,

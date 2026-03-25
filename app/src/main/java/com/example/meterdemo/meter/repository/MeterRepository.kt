@@ -107,7 +107,7 @@ data class MeterValueSnapshot(
     val name: String,
     val address: Int,
     val registerCount: Int,
-    val gain: Int,
+    val gain: Double,
     val unit: String,
     val rawValue: Int,
     val formattedValue: String

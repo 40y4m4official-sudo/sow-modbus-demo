@@ -100,7 +100,7 @@ class MeterPersistence(context: Context) {
                         name = pointJson.getString("name"),
                         address = pointJson.getInt("address"),
                         registerCount = pointJson.optInt("registerCount", 1),
-                        gain = pointJson.optInt("gain", 1),
+                        gain = pointJson.optDouble("gain", 1.0),
                         dataType = DataType.valueOf(pointJson.optString("dataType", DataType.INT16.name)),
                         wordByteOrder = WordByteOrder.valueOf(
                             pointJson.optString("wordByteOrder", WordByteOrder.MSB_MSB.name)

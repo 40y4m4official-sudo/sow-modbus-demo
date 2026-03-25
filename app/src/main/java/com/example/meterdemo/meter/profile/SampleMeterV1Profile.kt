@@ -19,7 +19,7 @@ object SampleMeterV1Profile {
                 name = "Phase A Current",
                 address = 768,
                 registerCount = 1,
-                gain = 1,
+                gain = 1.0,
                 dataType = DataType.INT16,
                 unit = "A",
                 initialRawValue = 15
@@ -28,7 +28,7 @@ object SampleMeterV1Profile {
                 name = "Phase B Current",
                 address = 769,
                 registerCount = 1,
-                gain = 1,
+                gain = 1.0,
                 dataType = DataType.INT16,
                 unit = "A",
                 initialRawValue = 16
@@ -37,7 +37,7 @@ object SampleMeterV1Profile {
                 name = "Phase C Current",
                 address = 770,
                 registerCount = 1,
-                gain = 1,
+                gain = 1.0,
                 dataType = DataType.INT16,
                 unit = "A",
                 initialRawValue = 14
@@ -46,7 +46,7 @@ object SampleMeterV1Profile {
                 name = "Line Voltage A-B",
                 address = 778,
                 registerCount = 1,
-                gain = 1,
+                gain = 1.0,
                 dataType = DataType.INT16,
                 unit = "V",
                 initialRawValue = 210
@@ -55,7 +55,7 @@ object SampleMeterV1Profile {
                 name = "Line Voltage B-C",
                 address = 779,
                 registerCount = 1,
-                gain = 1,
+                gain = 1.0,
                 dataType = DataType.INT16,
                 unit = "V",
                 initialRawValue = 211
@@ -64,7 +64,7 @@ object SampleMeterV1Profile {
                 name = "Line Voltage C-A",
                 address = 780,
                 registerCount = 1,
-                gain = 1,
+                gain = 1.0,
                 dataType = DataType.INT16,
                 unit = "V",
                 initialRawValue = 209
@@ -73,7 +73,7 @@ object SampleMeterV1Profile {
                 name = "Active Power",
                 address = 794,
                 registerCount = 1,
-                gain = 1,
+                gain = 1.0,
                 dataType = DataType.INT16,
                 unit = "W",
                 initialRawValue = 5200
@@ -82,7 +82,7 @@ object SampleMeterV1Profile {
                 name = "Import Active Energy Total",
                 address = 1304,
                 registerCount = 1,
-                gain = 100,
+                gain = 100.0,
                 dataType = DataType.INT16,
                 unit = "kWh",
                 initialRawValue = 12345
@@ -91,7 +91,7 @@ object SampleMeterV1Profile {
                 name = "Export Active Energy Total",
                 address = 1306,
                 registerCount = 1,
-                gain = 100,
+                gain = 100.0,
                 dataType = DataType.INT16,
                 unit = "kWh",
                 initialRawValue = 67

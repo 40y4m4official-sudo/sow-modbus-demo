@@ -38,6 +38,7 @@ fun AddMeterScreen(
     onFunctionCodeChange: (Int) -> Unit,
     onRegisterNameChange: (Int, String) -> Unit,
     onRegisterAddressChange: (Int, String) -> Unit,
+    onRegisterCountChange: (Int, String) -> Unit,
     onRegisterGainChange: (Int, String) -> Unit,
     onRegisterUnitChange: (Int, String) -> Unit,
     onRegisterInitialValueChange: (Int, String) -> Unit,
@@ -169,10 +170,18 @@ fun AddMeterScreen(
                             )
                             Spacer(modifier = Modifier.width(12.dp))
                             OutlinedTextField(
+                                value = register.registerCountInput,
+                                onValueChange = { onRegisterCountChange(index, it) },
+                                label = { Text("Words") },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                modifier = Modifier.weight(1f)
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            OutlinedTextField(
                                 value = register.gainInput,
                                 onValueChange = { onRegisterGainChange(index, it) },
                                 label = { Text("Gain") },
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                                 modifier = Modifier.weight(1f)
                             )
                         }
@@ -217,7 +226,7 @@ fun AddMeterScreen(
                         Spacer(modifier = Modifier.height(8.dp))
 
                         Text(
-                            text = "Words: ${register.dataType.registerCount}",
+                            text = "Address blank means unused. Words: 1..4, Gain: 0.0..1000000.0",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

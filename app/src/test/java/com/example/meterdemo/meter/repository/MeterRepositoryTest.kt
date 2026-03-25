@@ -67,6 +67,13 @@ class MeterRepositoryTest {
     }
 
     @Test
+    fun snapshot_exposesDecimalGain() {
+        val snapshot = repository.snapshot().first { it.address == 1304 }
+
+        assertEquals(100.0, snapshot.gain, 0.0)
+    }
+
+    @Test
     fun getFormattedValue_gain100_returnsScaledValueWithUnit() {
         val actual = repository.getFormattedValue(1304)
 
