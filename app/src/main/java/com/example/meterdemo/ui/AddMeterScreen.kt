@@ -89,6 +89,14 @@ fun AddMeterScreen(
                 .weight(1f)
                 .verticalScroll(rememberScrollState())
         ) {
+            Text(
+                text = "The standard 22 signal templates are preloaded. Fill in address and value settings as needed.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(

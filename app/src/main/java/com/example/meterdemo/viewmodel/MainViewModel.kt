@@ -7,6 +7,7 @@ import com.example.meterdemo.logging.CommLogger
 import com.example.meterdemo.meter.model.DataType
 import com.example.meterdemo.meter.model.MeterPoint
 import com.example.meterdemo.meter.model.MeterProfile
+import com.example.meterdemo.meter.model.StandardSignalTemplates
 import com.example.meterdemo.meter.model.WordByteOrder
 import com.example.meterdemo.meter.profiles.MeterProfiles
 import com.example.meterdemo.meter.repository.MeterRepository
@@ -438,17 +439,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             modelId = modelId,
             slaveIdInput = slaveId.toString(),
             functionCode = 0x03,
-            registers = listOf(
-                MeterRegisterDraft("Phase A Current", "768", "1", "A", "15"),
-                MeterRegisterDraft("Phase B Current", "769", "1", "A", "16"),
-                MeterRegisterDraft("Phase C Current", "770", "1", "A", "14"),
-                MeterRegisterDraft("Line Voltage A-B", "778", "1", "V", "210"),
-                MeterRegisterDraft("Line Voltage B-C", "779", "1", "V", "211"),
-                MeterRegisterDraft("Line Voltage C-A", "780", "1", "V", "209"),
-                MeterRegisterDraft("Active Power", "794", "1", "W", "5200"),
-                MeterRegisterDraft("Import Active Energy Total", "1304", "100", "kWh", "12345"),
-                MeterRegisterDraft("Export Active Energy Total", "1306", "100", "kWh", "67")
-            )
+            registers = standardRegisterDrafts()
         )
     }
 
@@ -473,6 +464,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun allProfiles(): List<MeterProfile> = builtinProfiles + userProfiles
+
+    private fun standardRegisterDrafts(): List<MeterRegisterDraft> {
+        return StandardSignalTemplates.all.map { template ->
+            MeterRegisterDraft(
+                name = template.name,
+                addressInput = "",
+                gainInput = "1",
+                unit = template.unit,
+                initialRawValueInput = "0",
+                dataType = DataType.INT16,
+                wordByteOrder = WordByteOrder.MSB_MSB
+            )
+        }
+    }
 
     private fun persistState() {
         persistence.saveState(
