@@ -7,6 +7,7 @@ class MeterRepository(
     initialProfile: MeterProfile
 ) {
     private var currentProfile: MeterProfile = initialProfile
+    private var currentSlaveId: Int = initialProfile.slaveId
 
     private val rawValues: MutableMap<Int, Int> = linkedMapOf()
 
@@ -16,6 +17,7 @@ class MeterRepository(
 
     fun loadProfile(profile: MeterProfile) {
         currentProfile = profile
+        currentSlaveId = profile.slaveId
         rawValues.clear()
         profile.points.forEach { point ->
             rawValues[point.address] = point.initialRawValue
@@ -24,7 +26,13 @@ class MeterRepository(
 
     fun getProfile(): MeterProfile = currentProfile
 
-    fun getSlaveId(): Int = currentProfile.slaveId
+    fun getSlaveId(): Int = currentSlaveId
+
+    fun setSlaveId(slaveId: Int): Boolean {
+        if (slaveId !in 1..247) return false
+        currentSlaveId = slaveId
+        return true
+    }
 
     fun getFunctionCode(): Int = currentProfile.functionCode
 

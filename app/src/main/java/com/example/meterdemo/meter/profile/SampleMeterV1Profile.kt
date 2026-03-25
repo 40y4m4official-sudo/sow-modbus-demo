@@ -7,16 +7,16 @@ import com.example.meterdemo.meter.model.MeterProfile
 object SampleMeterV1Profile {
     val profile = MeterProfile(
         modelId = "sample-meter-v1",
-        displayName = "サンプル電力量計 V1",
+        displayName = "Sample Power Meter V1",
         slaveId = 2,
         baudRate = 19200,
         dataBits = 8,
-        parity = 2, // Even parity. USB-RS485 実装時は使用ライブラリの定数へ合わせる。
+        parity = 2, // Even parity. Map this to the USB serial library constant later.
         stopBits = 1,
         functionCode = 0x03,
         points = listOf(
             MeterPoint(
-                name = "A相電流",
+                name = "Phase A Current",
                 address = 768,
                 registerCount = 1,
                 gain = 1,
@@ -25,7 +25,7 @@ object SampleMeterV1Profile {
                 initialRawValue = 15
             ),
             MeterPoint(
-                name = "B相電流",
+                name = "Phase B Current",
                 address = 769,
                 registerCount = 1,
                 gain = 1,
@@ -34,7 +34,7 @@ object SampleMeterV1Profile {
                 initialRawValue = 16
             ),
             MeterPoint(
-                name = "C相電流",
+                name = "Phase C Current",
                 address = 770,
                 registerCount = 1,
                 gain = 1,
@@ -43,7 +43,7 @@ object SampleMeterV1Profile {
                 initialRawValue = 14
             ),
             MeterPoint(
-                name = "A-B線電圧",
+                name = "Line Voltage A-B",
                 address = 778,
                 registerCount = 1,
                 gain = 1,
@@ -52,7 +52,7 @@ object SampleMeterV1Profile {
                 initialRawValue = 210
             ),
             MeterPoint(
-                name = "B-C線電圧",
+                name = "Line Voltage B-C",
                 address = 779,
                 registerCount = 1,
                 gain = 1,
@@ -61,7 +61,7 @@ object SampleMeterV1Profile {
                 initialRawValue = 211
             ),
             MeterPoint(
-                name = "C-A線電圧",
+                name = "Line Voltage C-A",
                 address = 780,
                 registerCount = 1,
                 gain = 1,
@@ -70,7 +70,7 @@ object SampleMeterV1Profile {
                 initialRawValue = 209
             ),
             MeterPoint(
-                name = "有効電力",
+                name = "Active Power",
                 address = 794,
                 registerCount = 1,
                 gain = 1,
@@ -79,7 +79,7 @@ object SampleMeterV1Profile {
                 initialRawValue = 5200
             ),
             MeterPoint(
-                name = "正方向有効電力量合計値",
+                name = "Import Active Energy Total",
                 address = 1304,
                 registerCount = 1,
                 gain = 100,
@@ -88,7 +88,7 @@ object SampleMeterV1Profile {
                 initialRawValue = 12345
             ),
             MeterPoint(
-                name = "負方向有効電力量合計値",
+                name = "Export Active Energy Total",
                 address = 1306,
                 registerCount = 1,
                 gain = 100,
