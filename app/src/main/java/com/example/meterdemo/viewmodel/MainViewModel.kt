@@ -139,14 +139,44 @@ class MainViewModel : ViewModel() {
     }
 
     fun startNewUserMeter() {
-        val draft = defaultMeterDraft(
-            displayName = "New Meter",
-            modelId = "custom-meter-${userProfiles.size + 1}",
-            slaveId = repository.getSlaveId()
-        )
         refreshUiState(
+            editingExistingUserMeter = false,
             selectedEditableUserModelId = null,
-            editMeterDraft = draft
+            editMeterDraft = defaultMeterDraft(
+                displayName = "New Meter",
+                modelId = "custom-meter-${userProfiles.size + 1}",
+                slaveId = repository.getSlaveId()
+            )
+        )
+    }
+
+    fun startEditingUserMeter(modelId: String) {
+        val profile = userProfiles.firstOrNull { it.modelId == modelId }
+        if (profile == null) {
+            logger.error("User meter not found: $modelId")
+            return
+        }
+
+        refreshUiState(
+            editingExistingUserMeter = true,
+            selectedEditableUserModelId = modelId,
+            editMeterDraft = profile.toDraft()
+        )
+    }
+
+    fun deleteUserMeters(modelIds: Set<String>) {
+        if (modelIds.isEmpty()) return
+
+        userProfiles.removeAll { profile -> modelIds.contains(profile.modelId) }
+
+        if (modelIds.contains(repository.getProfile().modelId)) {
+            repository.loadProfile(builtinProfiles.first())
+        }
+
+        logger.info("Deleted ${modelIds.size} user meter(s)")
+        refreshUiState(
+            editingExistingUserMeter = false,
+            selectedEditableUserModelId = null
         )
     }
 
@@ -185,28 +215,55 @@ class MainViewModel : ViewModel() {
         refreshUiState(editMeterDraft = state.editMeterDraft.copy(registers = updatedRegisters))
     }
 
-    fun saveNewUserMeter(): Boolean {
+    fun saveMeterDraft(): Boolean {
         val state = _uiState.value
         val profile = buildProfileFromDraft(state.editMeterDraft) ?: return false
 
-        val duplicateExists = allProfiles().any { it.modelId == profile.modelId }
-        if (duplicateExists) {
-            logger.error("Model ID already exists: ${profile.modelId}")
-            return false
+        return if (state.editingExistingUserMeter) {
+            val originalModelId = state.selectedEditableUserModelId ?: return false
+            val duplicateExists = allProfiles().any { it.modelId == profile.modelId && it.modelId != originalModelId }
+            if (duplicateExists) {
+                logger.error("Model ID already exists: ${profile.modelId}")
+                false
+            } else {
+                val index = userProfiles.indexOfFirst { it.modelId == originalModelId }
+                if (index == -1) {
+                    logger.error("User meter not found")
+                    false
+                } else {
+                    userProfiles[index] = profile
+                    if (repository.getProfile().modelId == originalModelId) {
+                        repository.loadProfile(profile)
+                    }
+                    logger.info("Updated user meter: ${profile.displayName}")
+                    refreshUiState(
+                        editingExistingUserMeter = true,
+                        selectedEditableUserModelId = profile.modelId,
+                        editMeterDraft = profile.toDraft()
+                    )
+                    true
+                }
+            }
+        } else {
+            val duplicateExists = allProfiles().any { it.modelId == profile.modelId }
+            if (duplicateExists) {
+                logger.error("Model ID already exists: ${profile.modelId}")
+                false
+            } else {
+                userProfiles += profile
+                logger.info("Added user meter: ${profile.displayName}")
+                refreshUiState(
+                    editingExistingUserMeter = false,
+                    selectedEditableUserModelId = null,
+                    editMeterDraft = defaultMeterDraft(
+                        displayName = "New Meter",
+                        modelId = "custom-meter-${userProfiles.size + 1}",
+                        slaveId = repository.getSlaveId()
+                    )
+                )
+                true
+            }
         }
-
-        userProfiles += profile
-        logger.info("Added user meter: ${profile.displayName}")
-
-        refreshUiState(
-            selectedEditableUserModelId = null,
-            editMeterDraft = defaultMeterDraft(
-                displayName = "New Meter",
-                modelId = "custom-meter-${userProfiles.size + 1}",
-                slaveId = repository.getSlaveId()
-            )
-        )
-        return true
     }
 
     private fun simulateRead(address: Int) {
@@ -288,6 +345,7 @@ class MainViewModel : ViewModel() {
         selectedPointIndex: Int = _uiState.value.selectedPointIndex,
         rawValueInput: String? = null,
         slaveIdInput: String? = null,
+        editingExistingUserMeter: Boolean = _uiState.value.editingExistingUserMeter,
         selectedEditableUserModelId: String? = _uiState.value.selectedEditableUserModelId,
         editMeterDraft: MeterEditorDraft = _uiState.value.editMeterDraft
     ) {
@@ -311,6 +369,7 @@ class MainViewModel : ViewModel() {
             selectedPointIndex = safeIndex,
             selectedPoint = selectedPoint,
             rawValueInput = rawValueInput ?: selectedPoint?.rawValue?.toString().orEmpty(),
+            editingExistingUserMeter = editingExistingUserMeter,
             selectedEditableUserModelId = selectedEditableUserModelId,
             editMeterDraft = editMeterDraft
         )
@@ -330,6 +389,7 @@ class MainViewModel : ViewModel() {
             selectedPointIndex = 0,
             selectedPoint = selectedPoint,
             rawValueInput = selectedPoint?.rawValue?.toString().orEmpty(),
+            editingExistingUserMeter = false,
             selectedEditableUserModelId = null,
             editMeterDraft = defaultMeterDraft(
                 displayName = "New Meter",
@@ -359,6 +419,24 @@ class MainViewModel : ViewModel() {
                 MeterRegisterDraft("Import Active Energy Total", "1304", "100", "kWh", "12345"),
                 MeterRegisterDraft("Export Active Energy Total", "1306", "100", "kWh", "67")
             )
+        )
+    }
+
+    private fun MeterProfile.toDraft(): MeterEditorDraft {
+        return MeterEditorDraft(
+            displayName = displayName,
+            modelId = modelId,
+            slaveIdInput = slaveId.toString(),
+            registers = points.map { point ->
+                MeterRegisterDraft(
+                    name = point.name,
+                    addressInput = point.address.toString(),
+                    gainInput = point.gain.toString(),
+                    unit = point.unit,
+                    initialRawValueInput = point.initialRawValue.toString(),
+                    dataType = point.dataType
+                )
+            }
         )
     }
 
@@ -393,6 +471,7 @@ data class MainUiState(
     val selectedPointIndex: Int,
     val selectedPoint: MeterValueSnapshot?,
     val rawValueInput: String,
+    val editingExistingUserMeter: Boolean,
     val selectedEditableUserModelId: String?,
     val editMeterDraft: MeterEditorDraft
 ) {

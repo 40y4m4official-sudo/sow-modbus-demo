@@ -60,7 +60,12 @@ fun MeterDemoApp(viewModel: MainViewModel) {
             onCreateMeter = {
                 viewModel.startNewUserMeter()
                 currentScreen = Screen.AddMeter
-            }
+            },
+            onEditMeter = { modelId ->
+                viewModel.startEditingUserMeter(modelId)
+                currentScreen = Screen.AddMeter
+            },
+            onDeleteMeters = viewModel::deleteUserMeters
         )
 
         Screen.AddMeter -> AddMeterScreen(
@@ -86,7 +91,7 @@ fun MeterDemoApp(viewModel: MainViewModel) {
             },
             onAddRegister = viewModel::addEditDraftRegister,
             onApply = {
-                if (viewModel.saveNewUserMeter()) {
+                if (viewModel.saveMeterDraft()) {
                     currentScreen = Screen.EditMeter
                 }
             }

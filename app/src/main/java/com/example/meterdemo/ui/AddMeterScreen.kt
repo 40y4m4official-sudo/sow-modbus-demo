@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
@@ -16,6 +17,10 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -37,6 +42,29 @@ fun AddMeterScreen(
     onApply: () -> Unit
 ) {
     val draft = uiState.editMeterDraft
+    var showOverwriteDialog by remember { mutableStateOf(false) }
+    val isEditing = uiState.editingExistingUserMeter
+
+    if (showOverwriteDialog) {
+        AlertDialog(
+            onDismissRequest = { showOverwriteDialog = false },
+            title = { Text("Overwrite meter?") },
+            text = { Text("Overwrite the existing user meter with the edited register settings?") },
+            confirmButton = {
+                Button(onClick = {
+                    showOverwriteDialog = false
+                    onApply()
+                }) {
+                    Text("Overwrite")
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showOverwriteDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
 
     Column(
         modifier = Modifier
@@ -44,7 +72,7 @@ fun AddMeterScreen(
             .padding(20.dp)
     ) {
         ScreenHeader(
-            title = "Add Meter",
+            title = if (isEditing) "Register Settings" else "Add Meter",
             trailingText = "Back",
             onTrailingClick = onBack
         )
@@ -150,7 +178,13 @@ fun AddMeterScreen(
         Spacer(modifier = Modifier.height(12.dp))
 
         Button(
-            onClick = onApply,
+            onClick = {
+                if (isEditing) {
+                    showOverwriteDialog = true
+                } else {
+                    onApply()
+                }
+            },
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("Apply")
