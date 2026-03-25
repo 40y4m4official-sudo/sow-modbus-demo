@@ -1,5 +1,7 @@
 package com.example.meterdemo.ui
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -9,12 +11,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -36,6 +37,7 @@ fun SettingsScreen(
     logs: List<CommLog>,
     onBack: () -> Unit,
     onProfileSelected: (String) -> Unit,
+    onOpenAddMeter: () -> Unit,
     onSlaveIdChange: (String) -> Unit,
     onApplySlaveId: () -> Unit,
     onOpenLogs: () -> Unit,
@@ -75,24 +77,47 @@ fun SettingsScreen(
                 )
                 Spacer(modifier = Modifier.height(12.dp))
                 OutlinedButton(
-                    onClick = { presetExpanded = true },
+                    onClick = { presetExpanded = !presetExpanded },
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(uiState.profileName)
                 }
-                DropdownMenu(
-                    expanded = presetExpanded,
-                    onDismissRequest = { presetExpanded = false }
-                ) {
-                    uiState.profiles.forEach { profile ->
-                        DropdownMenuItem(
-                            text = { Text(profile.displayName) },
-                            onClick = {
-                                presetExpanded = false
-                                onProfileSelected(profile.modelId)
+                if (presetExpanded) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 6.dp)
+                            .background(
+                                color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                                shape = RoundedCornerShape(18.dp)
+                            )
+                            .border(
+                                width = 1.dp,
+                                color = MaterialTheme.colorScheme.outlineVariant,
+                                shape = RoundedCornerShape(18.dp)
+                            )
+                            .padding(8.dp)
+                    ) {
+                        uiState.profiles.forEach { profile ->
+                            OutlinedButton(
+                                onClick = {
+                                    presetExpanded = false
+                                    onProfileSelected(profile.modelId)
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(profile.displayName)
                             }
-                        )
+                            Spacer(modifier = Modifier.height(8.dp))
+                        }
                     }
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+                Button(
+                    onClick = onOpenAddMeter,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Add Meter")
                 }
                 Spacer(modifier = Modifier.height(12.dp))
                 OutlinedTextField(

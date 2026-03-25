@@ -1,0 +1,163 @@
+package com.example.meterdemo.ui
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.unit.dp
+import com.example.meterdemo.viewmodel.MainUiState
+
+@Composable
+fun AddMeterScreen(
+    uiState: MainUiState,
+    onBack: () -> Unit,
+    onProfileNameChange: (String) -> Unit,
+    onModelIdChange: (String) -> Unit,
+    onSlaveIdChange: (String) -> Unit,
+    onRegisterNameChange: (Int, String) -> Unit,
+    onRegisterAddressChange: (Int, String) -> Unit,
+    onRegisterGainChange: (Int, String) -> Unit,
+    onRegisterUnitChange: (Int, String) -> Unit,
+    onRegisterInitialValueChange: (Int, String) -> Unit,
+    onAddRegister: () -> Unit,
+    onSave: () -> Unit
+) {
+    val draft = uiState.newMeterDraft
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(20.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = "New Meter",
+                style = MaterialTheme.typography.headlineMedium
+            )
+            OutlinedButton(onClick = onBack) {
+                Text("Back")
+            }
+        }
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        Card(modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    text = "Profile Info",
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = draft.displayName,
+                    onValueChange = onProfileNameChange,
+                    label = { Text("Display Name") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = draft.modelId,
+                    onValueChange = onModelIdChange,
+                    label = { Text("Model ID") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = draft.slaveIdInput,
+                    onValueChange = onSlaveIdChange,
+                    label = { Text("Default Slave ID") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        draft.registers.forEachIndexed { index, register ->
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "Register ${index + 1}",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    OutlinedTextField(
+                        value = register.name,
+                        onValueChange = { onRegisterNameChange(index, it) },
+                        label = { Text("Name") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    OutlinedTextField(
+                        value = register.addressInput,
+                        onValueChange = { onRegisterAddressChange(index, it) },
+                        label = { Text("Address") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    OutlinedTextField(
+                        value = register.gainInput,
+                        onValueChange = { onRegisterGainChange(index, it) },
+                        label = { Text("Gain") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    OutlinedTextField(
+                        value = register.unit,
+                        onValueChange = { onRegisterUnitChange(index, it) },
+                        label = { Text("Unit") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    OutlinedTextField(
+                        value = register.initialRawValueInput,
+                        onValueChange = { onRegisterInitialValueChange(index, it) },
+                        label = { Text("Initial Raw Value") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+        }
+
+        OutlinedButton(
+            onClick = onAddRegister,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Add Register")
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Button(
+            onClick = onSave,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Save Meter Profile")
+        }
+    }
+}

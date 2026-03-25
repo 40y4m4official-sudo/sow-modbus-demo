@@ -11,7 +11,8 @@ import com.example.meterdemo.viewmodel.MainViewModel
 private enum class Screen {
     Main,
     Settings,
-    Logs
+    Logs,
+    AddMeter
 }
 
 @Composable
@@ -37,6 +38,7 @@ fun MeterDemoApp(viewModel: MainViewModel) {
             logs = logs,
             onBack = { currentScreen = Screen.Main },
             onProfileSelected = viewModel::selectProfile,
+            onOpenAddMeter = { currentScreen = Screen.AddMeter },
             onSlaveIdChange = viewModel::updateSlaveIdInput,
             onApplySlaveId = viewModel::applySlaveId,
             onOpenLogs = { currentScreen = Screen.Logs },
@@ -49,6 +51,35 @@ fun MeterDemoApp(viewModel: MainViewModel) {
             logs = logs,
             onBack = { currentScreen = Screen.Settings },
             onClearLogs = viewModel::clearLogs
+        )
+
+        Screen.AddMeter -> AddMeterScreen(
+            uiState = uiState,
+            onBack = { currentScreen = Screen.Settings },
+            onProfileNameChange = viewModel::updateDraftProfileName,
+            onModelIdChange = viewModel::updateDraftModelId,
+            onSlaveIdChange = viewModel::updateDraftSlaveId,
+            onRegisterNameChange = { index, value ->
+                viewModel.updateDraftRegister(index) { copy(name = value) }
+            },
+            onRegisterAddressChange = { index, value ->
+                viewModel.updateDraftRegister(index) { copy(addressInput = value) }
+            },
+            onRegisterGainChange = { index, value ->
+                viewModel.updateDraftRegister(index) { copy(gainInput = value) }
+            },
+            onRegisterUnitChange = { index, value ->
+                viewModel.updateDraftRegister(index) { copy(unit = value) }
+            },
+            onRegisterInitialValueChange = { index, value ->
+                viewModel.updateDraftRegister(index) { copy(initialRawValueInput = value) }
+            },
+            onAddRegister = viewModel::addDraftRegister,
+            onSave = {
+                if (viewModel.saveDraftProfile()) {
+                    currentScreen = Screen.Settings
+                }
+            }
         )
     }
 }
