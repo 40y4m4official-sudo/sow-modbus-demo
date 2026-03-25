@@ -59,7 +59,7 @@ class ModbusRtuSlaveEngine(
         val payload = byteArrayOf(
             slaveId.toByte(),
             functionCode.toByte(),
-            0x02, // 1レジスタ = 2バイト
+            0x02, // 1 register = 2 bytes
             ((value16 shr 8) and 0xFF).toByte(), // MSB
             (value16 and 0xFF).toByte()          // LSB
         )

@@ -6,7 +6,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.material3.MaterialTheme
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.meterdemo.ui.MeterValuesScreen
+import com.example.meterdemo.ui.MeterDemoApp
 import com.example.meterdemo.viewmodel.MainViewModel
 
 class MainActivity : ComponentActivity() {
@@ -17,7 +17,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             MaterialTheme {
                 val viewModel: MainViewModel = viewModel()
-                MeterValuesScreen(viewModel = viewModel)
+                MeterDemoApp(viewModel = viewModel)
             }
         }
     }
