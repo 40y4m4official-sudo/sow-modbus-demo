@@ -1,11 +1,13 @@
 package com.example.meterdemo.ui
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -131,37 +133,44 @@ fun AddMeterScreen(
                             label = { Text("Name") },
                             modifier = Modifier.fillMaxWidth()
                         )
+
                         Spacer(modifier = Modifier.height(12.dp))
-                        OutlinedTextField(
-                            value = register.addressInput,
-                            onValueChange = { onRegisterAddressChange(index, it) },
-                            label = { Text("Address") },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            modifier = Modifier.fillMaxWidth()
-                        )
+                        Row(modifier = Modifier.fillMaxWidth()) {
+                            OutlinedTextField(
+                                value = register.addressInput,
+                                onValueChange = { onRegisterAddressChange(index, it) },
+                                label = { Text("Address") },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                modifier = Modifier.weight(1f)
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            OutlinedTextField(
+                                value = register.gainInput,
+                                onValueChange = { onRegisterGainChange(index, it) },
+                                label = { Text("Gain") },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+
                         Spacer(modifier = Modifier.height(12.dp))
-                        OutlinedTextField(
-                            value = register.gainInput,
-                            onValueChange = { onRegisterGainChange(index, it) },
-                            label = { Text("Gain") },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                        Spacer(modifier = Modifier.height(12.dp))
-                        OutlinedTextField(
-                            value = register.unit,
-                            onValueChange = { onRegisterUnitChange(index, it) },
-                            label = { Text("Unit") },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                        Spacer(modifier = Modifier.height(12.dp))
-                        OutlinedTextField(
-                            value = register.initialRawValueInput,
-                            onValueChange = { onRegisterInitialValueChange(index, it) },
-                            label = { Text("Initial Raw Value") },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            modifier = Modifier.fillMaxWidth()
-                        )
+
+                        Row(modifier = Modifier.fillMaxWidth()) {
+                            OutlinedTextField(
+                                value = register.unit,
+                                onValueChange = { onRegisterUnitChange(index, it) },
+                                label = { Text("Unit") },
+                                modifier = Modifier.weight(1f)
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            OutlinedTextField(
+                                value = register.initialRawValueInput,
+                                onValueChange = { onRegisterInitialValueChange(index, it) },
+                                label = { Text("Initial Raw Value") },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
                     }
                 }
                 Spacer(modifier = Modifier.height(12.dp))
