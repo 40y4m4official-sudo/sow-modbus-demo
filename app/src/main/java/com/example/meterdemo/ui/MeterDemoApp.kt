@@ -12,7 +12,8 @@ private enum class Screen {
     Main,
     Settings,
     Logs,
-    EditMeter
+    EditMeter,
+    AddMeter
 }
 
 @Composable
@@ -56,8 +57,15 @@ fun MeterDemoApp(viewModel: MainViewModel) {
         Screen.EditMeter -> EditMeterScreen(
             uiState = uiState,
             onBack = { currentScreen = Screen.Settings },
-            onCreateMeter = viewModel::startNewUserMeter,
-            onSelectMeter = viewModel::selectEditableUserMeter,
+            onCreateMeter = {
+                viewModel.startNewUserMeter()
+                currentScreen = Screen.AddMeter
+            }
+        )
+
+        Screen.AddMeter -> AddMeterScreen(
+            uiState = uiState,
+            onBack = { currentScreen = Screen.EditMeter },
             onProfileNameChange = viewModel::updateEditDraftProfileName,
             onModelIdChange = viewModel::updateEditDraftModelId,
             onSlaveIdChange = viewModel::updateEditDraftSlaveId,
@@ -77,7 +85,11 @@ fun MeterDemoApp(viewModel: MainViewModel) {
                 viewModel.updateEditDraftRegister(index) { copy(initialRawValueInput = value) }
             },
             onAddRegister = viewModel::addEditDraftRegister,
-            onSave = viewModel::saveEditDraft
+            onApply = {
+                if (viewModel.saveNewUserMeter()) {
+                    currentScreen = Screen.EditMeter
+                }
+            }
         )
     }
 }

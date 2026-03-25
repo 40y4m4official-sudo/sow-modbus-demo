@@ -3,6 +3,7 @@ package com.example.meterdemo.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -25,7 +26,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.example.meterdemo.logging.CommLog
@@ -96,14 +99,42 @@ fun SettingsScreen(
                                 .padding(8.dp)
                         ) {
                             uiState.allProfiles.forEach { profile ->
-                                OutlinedButton(
+                                val isSelected = profile.modelId == uiState.profileModelId
+                                val isAdded = uiState.userProfiles.any { it.modelId == profile.modelId }
+
+                                Button(
                                     onClick = {
                                         presetExpanded = false
                                         onProfileSelected(profile.modelId)
                                     },
-                                    modifier = Modifier.fillMaxWidth()
+                                    modifier = Modifier.fillMaxWidth(),
+                                    enabled = !isSelected
                                 ) {
-                                    Text(profile.displayName)
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = profile.displayName,
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                        )
+                                        if (isAdded) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .background(
+                                                        color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.18f),
+                                                        shape = RoundedCornerShape(999.dp)
+                                                    )
+                                                    .padding(horizontal = 8.dp, vertical = 2.dp)
+                                            ) {
+                                                Text(
+                                                    text = "added",
+                                                    style = MaterialTheme.typography.labelSmall
+                                                )
+                                            }
+                                        }
+                                    }
                                 }
                                 Spacer(modifier = Modifier.height(8.dp))
                             }

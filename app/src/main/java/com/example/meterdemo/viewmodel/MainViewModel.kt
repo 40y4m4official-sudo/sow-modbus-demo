@@ -150,19 +150,6 @@ class MainViewModel : ViewModel() {
         )
     }
 
-    fun selectEditableUserMeter(modelId: String) {
-        val profile = userProfiles.firstOrNull { it.modelId == modelId }
-        if (profile == null) {
-            logger.error("Editable meter not found: $modelId")
-            return
-        }
-
-        refreshUiState(
-            selectedEditableUserModelId = modelId,
-            editMeterDraft = profile.toDraft()
-        )
-    }
-
     fun updateEditDraftProfileName(value: String) {
         refreshUiState(editMeterDraft = _uiState.value.editMeterDraft.copy(displayName = value))
     }
@@ -198,43 +185,26 @@ class MainViewModel : ViewModel() {
         refreshUiState(editMeterDraft = state.editMeterDraft.copy(registers = updatedRegisters))
     }
 
-    fun saveEditDraft(): Boolean {
+    fun saveNewUserMeter(): Boolean {
         val state = _uiState.value
         val profile = buildProfileFromDraft(state.editMeterDraft) ?: return false
-        val editingExisting = state.selectedEditableUserModelId != null
 
-        if (editingExisting) {
-            val originalModelId = state.selectedEditableUserModelId
-            val duplicateExists = userProfiles.any { it.modelId == profile.modelId && it.modelId != originalModelId }
-            if (duplicateExists || builtinProfiles.any { it.modelId == profile.modelId }) {
-                logger.error("Model ID already exists: ${profile.modelId}")
-                return false
-            }
-
-            val index = userProfiles.indexOfFirst { it.modelId == originalModelId }
-            if (index == -1) {
-                logger.error("Editable meter not found")
-                return false
-            }
-            userProfiles[index] = profile
-            logger.info("Updated user meter: ${profile.displayName}")
-        } else {
-            val duplicateExists = allProfiles().any { it.modelId == profile.modelId }
-            if (duplicateExists) {
-                logger.error("Model ID already exists: ${profile.modelId}")
-                return false
-            }
-            userProfiles += profile
-            logger.info("Added user meter: ${profile.displayName}")
+        val duplicateExists = allProfiles().any { it.modelId == profile.modelId }
+        if (duplicateExists) {
+            logger.error("Model ID already exists: ${profile.modelId}")
+            return false
         }
 
-        if (repository.getProfile().modelId == state.selectedEditableUserModelId) {
-            repository.loadProfile(profile)
-        }
+        userProfiles += profile
+        logger.info("Added user meter: ${profile.displayName}")
 
         refreshUiState(
-            selectedEditableUserModelId = profile.modelId,
-            editMeterDraft = profile.toDraft()
+            selectedEditableUserModelId = null,
+            editMeterDraft = defaultMeterDraft(
+                displayName = "New Meter",
+                modelId = "custom-meter-${userProfiles.size + 1}",
+                slaveId = repository.getSlaveId()
+            )
         )
         return true
     }
@@ -389,24 +359,6 @@ class MainViewModel : ViewModel() {
                 MeterRegisterDraft("Import Active Energy Total", "1304", "100", "kWh", "12345"),
                 MeterRegisterDraft("Export Active Energy Total", "1306", "100", "kWh", "67")
             )
-        )
-    }
-
-    private fun MeterProfile.toDraft(): MeterEditorDraft {
-        return MeterEditorDraft(
-            displayName = displayName,
-            modelId = modelId,
-            slaveIdInput = slaveId.toString(),
-            registers = points.map { point ->
-                MeterRegisterDraft(
-                    name = point.name,
-                    addressInput = point.address.toString(),
-                    gainInput = point.gain.toString(),
-                    unit = point.unit,
-                    initialRawValueInput = point.initialRawValue.toString(),
-                    dataType = point.dataType
-                )
-            }
         )
     }
 
