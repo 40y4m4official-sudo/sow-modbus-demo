@@ -26,6 +26,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.example.meterdemo.meter.model.DataType
 import com.example.meterdemo.viewmodel.MainUiState
 
 @Composable
@@ -199,8 +200,22 @@ fun AddMeterScreen(
                             OutlinedTextField(
                                 value = register.initialRawValueInput,
                                 onValueChange = { onRegisterInitialValueChange(index, it) },
-                                label = { Text("Initial Raw Value") },
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                label = {
+                                    Text(
+                                        if (register.dataType == DataType.FLOAT32) {
+                                            "Initial Float Value"
+                                        } else {
+                                            "Initial Raw Value"
+                                        }
+                                    )
+                                },
+                                keyboardOptions = KeyboardOptions(
+                                    keyboardType = if (register.dataType == DataType.FLOAT32) {
+                                        KeyboardType.Decimal
+                                    } else {
+                                        KeyboardType.Number
+                                    }
+                                ),
                                 modifier = Modifier.weight(1f)
                             )
                         }

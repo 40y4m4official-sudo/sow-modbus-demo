@@ -346,7 +346,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val address = trimmedAddress.toIntOrNull()
             val registerCount = register.registerCountInput.toIntOrNull()
             val gain = register.gainInput.toDoubleOrNull()
-            val initialRawValue = register.initialRawValueInput.toIntOrNull()
+            val initialRawValue = parseRegisterInitialValue(register)
 
             if (
                 register.name.isBlank() ||
@@ -490,7 +490,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     registerCountInput = point.registerCount.toString(),
                     gainInput = formatGain(point.gain),
                     unit = point.unit,
-                    initialRawValueInput = point.initialRawValue.toString(),
+                    initialRawValueInput = formatInitialValue(point),
                     dataType = point.dataType,
                     wordByteOrder = point.wordByteOrder
                 )
@@ -520,6 +520,25 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             gain.toInt().toString()
         } else {
             gain.toString()
+        }
+    }
+
+    private fun formatInitialValue(point: MeterPoint): String {
+        return point.rawInputValue(point.initialRawValue)
+    }
+
+    private fun parseRegisterInitialValue(register: MeterRegisterDraft): Int? {
+        return when (register.dataType) {
+            DataType.FLOAT32 -> register.initialRawValueInput.toFloatOrNull()?.toRawBits()
+            DataType.UINT16 -> register.initialRawValueInput.toLongOrNull()
+                ?.takeIf { it in 0..0xFFFF }
+                ?.toInt()
+
+            DataType.UINT32 -> register.initialRawValueInput.toLongOrNull()
+                ?.takeIf { it in 0..0xFFFFFFFFL }
+                ?.toInt()
+
+            DataType.INT16, DataType.INT32 -> register.initialRawValueInput.toIntOrNull()
         }
     }
 
