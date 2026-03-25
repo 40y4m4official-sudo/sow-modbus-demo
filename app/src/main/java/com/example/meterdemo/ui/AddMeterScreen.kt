@@ -45,6 +45,7 @@ fun AddMeterScreen(
     onRegisterInitialValueChange: (Int, String) -> Unit,
     onRegisterDataTypeChange: (Int) -> Unit,
     onRegisterWordByteOrderChange: (Int) -> Unit,
+    onValidateBeforeOverwrite: () -> Boolean,
     onAddRegister: () -> Unit,
     onApply: () -> Unit
 ) {
@@ -260,10 +261,21 @@ fun AddMeterScreen(
 
         Spacer(modifier = Modifier.height(12.dp))
 
+        uiState.draftErrorMessage?.let { message ->
+            Text(
+                text = message,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodyMedium
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+        }
+
         Button(
             onClick = {
                 if (isEditing) {
-                    showOverwriteDialog = true
+                    if (onValidateBeforeOverwrite()) {
+                        showOverwriteDialog = true
+                    }
                 } else {
                     onApply()
                 }

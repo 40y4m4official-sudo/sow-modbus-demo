@@ -99,6 +99,7 @@ fun MeterDemoApp(viewModel: MainViewModel) {
             onRegisterWordByteOrderChange = { index ->
                 viewModel.updateEditDraftRegister(index) { copy(wordByteOrder = wordByteOrder.next()) }
             },
+            onValidateBeforeOverwrite = viewModel::validateMeterDraft,
             onAddRegister = viewModel::addEditDraftRegister,
             onApply = {
                 if (viewModel.saveMeterDraft()) {

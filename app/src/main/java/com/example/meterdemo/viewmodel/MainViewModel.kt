@@ -158,6 +158,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         refreshUiState(
             editingExistingUserMeter = false,
             selectedEditableUserModelId = null,
+            draftErrorMessage = null,
             editMeterDraft = defaultMeterDraft(
                 displayName = "New Meter",
                 modelId = "custom-meter-${userProfiles.size + 1}",
@@ -176,6 +177,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         refreshUiState(
             editingExistingUserMeter = true,
             selectedEditableUserModelId = modelId,
+            draftErrorMessage = null,
             editMeterDraft = profile.toDraft()
         )
     }
@@ -198,19 +200,31 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun updateEditDraftProfileName(value: String) {
-        refreshUiState(editMeterDraft = _uiState.value.editMeterDraft.copy(displayName = value))
+        refreshUiState(
+            editMeterDraft = _uiState.value.editMeterDraft.copy(displayName = value),
+            draftErrorMessage = null
+        )
     }
 
     fun updateEditDraftModelId(value: String) {
-        refreshUiState(editMeterDraft = _uiState.value.editMeterDraft.copy(modelId = value))
+        refreshUiState(
+            editMeterDraft = _uiState.value.editMeterDraft.copy(modelId = value),
+            draftErrorMessage = null
+        )
     }
 
     fun updateEditDraftSlaveId(value: String) {
-        refreshUiState(editMeterDraft = _uiState.value.editMeterDraft.copy(slaveIdInput = value))
+        refreshUiState(
+            editMeterDraft = _uiState.value.editMeterDraft.copy(slaveIdInput = value),
+            draftErrorMessage = null
+        )
     }
 
     fun updateEditDraftFunctionCode(value: Int) {
-        refreshUiState(editMeterDraft = _uiState.value.editMeterDraft.copy(functionCode = value))
+        refreshUiState(
+            editMeterDraft = _uiState.value.editMeterDraft.copy(functionCode = value),
+            draftErrorMessage = null
+        )
     }
 
     fun updateEditDraftRegister(index: Int, update: MeterRegisterDraft.() -> MeterRegisterDraft) {
@@ -219,7 +233,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
         val updatedRegisters = state.editMeterDraft.registers.toMutableList()
         updatedRegisters[index] = updatedRegisters[index].update()
-        refreshUiState(editMeterDraft = state.editMeterDraft.copy(registers = updatedRegisters))
+        refreshUiState(
+            editMeterDraft = state.editMeterDraft.copy(registers = updatedRegisters),
+            draftErrorMessage = null
+        )
     }
 
     fun addEditDraftRegister() {
@@ -235,7 +252,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             dataType = DataType.INT16,
             wordByteOrder = WordByteOrder.MSB_MSB
         )
-        refreshUiState(editMeterDraft = state.editMeterDraft.copy(registers = updatedRegisters))
+        refreshUiState(
+            editMeterDraft = state.editMeterDraft.copy(registers = updatedRegisters),
+            draftErrorMessage = null
+        )
+    }
+
+    fun validateMeterDraft(): Boolean {
+        return buildProfileFromDraft(_uiState.value.editMeterDraft) != null
     }
 
     fun saveMeterDraft(): Boolean {
@@ -246,7 +270,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val originalModelId = state.selectedEditableUserModelId ?: return false
             val duplicateExists = allProfiles().any { it.modelId == profile.modelId && it.modelId != originalModelId }
             if (duplicateExists) {
-                logger.error("Model ID already exists: ${profile.modelId}")
+                reportDraftError("Model ID already exists: ${profile.modelId}")
                 false
             } else {
                 val index = userProfiles.indexOfFirst { it.modelId == originalModelId }
@@ -263,6 +287,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     refreshUiState(
                         editingExistingUserMeter = true,
                         selectedEditableUserModelId = profile.modelId,
+                        draftErrorMessage = null,
                         editMeterDraft = profile.toDraft()
                     )
                     true
@@ -271,7 +296,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         } else {
             val duplicateExists = allProfiles().any { it.modelId == profile.modelId }
             if (duplicateExists) {
-                logger.error("Model ID already exists: ${profile.modelId}")
+                reportDraftError("Model ID already exists: ${profile.modelId}")
                 false
             } else {
                 userProfiles += profile
@@ -280,6 +305,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 refreshUiState(
                     editingExistingUserMeter = false,
                     selectedEditableUserModelId = null,
+                    draftErrorMessage = null,
                     editMeterDraft = defaultMeterDraft(
                         displayName = "New Meter",
                         modelId = "custom-meter-${userProfiles.size + 1}",
@@ -321,19 +347,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val slaveId = draft.slaveIdInput.toIntOrNull()
 
         if (displayName.isBlank()) {
-            logger.error("Profile name is required")
+            reportDraftError("Profile name is required")
             return null
         }
         if (modelId.isBlank()) {
-            logger.error("Model ID is required")
+            reportDraftError("Model ID is required")
             return null
         }
         if (slaveId == null || slaveId !in 1..247) {
-            logger.error("Draft Slave ID must be in range 1..247")
+            reportDraftError("Slave ID must be in range 1..247")
             return null
         }
         if (draft.functionCode !in setOf(0x03, 0x04)) {
-            logger.error("Read function must be 03H or 04H")
+            reportDraftError("Read function must be 03H or 04H")
             return null
         }
 
@@ -355,23 +381,23 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 gain == null ||
                 initialRawValue == null
             ) {
-                logger.error("Register ${index + 1} has invalid values")
+                reportDraftError("Register ${index + 1} has invalid values")
                 return null
             }
             if (address !in 0..65535) {
-                logger.error("Register ${index + 1} address must be in range 0..65535")
+                reportDraftError("Register ${index + 1} address must be in range 0..65535")
                 return null
             }
             if (registerCount !in 1..4) {
-                logger.error("Register ${index + 1} word count must be in range 1..4")
+                reportDraftError("Register ${index + 1} word count must be in range 1..4")
                 return null
             }
             if (gain !in 0.0..1_000_000.0) {
-                logger.error("Register ${index + 1} gain must be in range 0.0..1000000.0")
+                reportDraftError("Register ${index + 1} gain must be in range 0.0..1000000.0")
                 return null
             }
             if (register.dataType == DataType.FLOAT32 && registerCount != 2) {
-                logger.error("Register ${index + 1} FLOAT32 requires word count 2")
+                reportDraftError("Register ${index + 1} FLOAT32 requires word count 2")
                 return null
             }
 
@@ -388,7 +414,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }.filterNotNull()
 
         if (points.isEmpty()) {
-            logger.error("At least one register address is required")
+            reportDraftError("At least one register address is required")
             return null
         }
 
@@ -411,6 +437,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         slaveIdInput: String? = null,
         editingExistingUserMeter: Boolean = _uiState.value.editingExistingUserMeter,
         selectedEditableUserModelId: String? = _uiState.value.selectedEditableUserModelId,
+        draftErrorMessage: String? = _uiState.value.draftErrorMessage,
         editMeterDraft: MeterEditorDraft = _uiState.value.editMeterDraft
     ) {
         val snapshots = repository.snapshot()
@@ -435,6 +462,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             rawValueInput = rawValueInput ?: selectedPoint?.let { formatRawValueInput(it) }.orEmpty(),
             editingExistingUserMeter = editingExistingUserMeter,
             selectedEditableUserModelId = selectedEditableUserModelId,
+            draftErrorMessage = draftErrorMessage,
             editMeterDraft = editMeterDraft
         )
     }
@@ -455,6 +483,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             rawValueInput = selectedPoint?.let { formatRawValueInput(it) }.orEmpty(),
             editingExistingUserMeter = false,
             selectedEditableUserModelId = null,
+            draftErrorMessage = null,
             editMeterDraft = defaultMeterDraft(
                 displayName = "New Meter",
                 modelId = "custom-meter-1",
@@ -566,6 +595,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    private fun reportDraftError(message: String) {
+        logger.error(message)
+        refreshUiState(draftErrorMessage = message)
+    }
+
     private fun persistState() {
         persistence.saveState(
             PersistedMeterState(
@@ -623,6 +657,7 @@ data class MainUiState(
     val rawValueInput: String,
     val editingExistingUserMeter: Boolean,
     val selectedEditableUserModelId: String?,
+    val draftErrorMessage: String?,
     val editMeterDraft: MeterEditorDraft
 ) {
     val allProfiles: List<MeterProfile>
