@@ -11,7 +11,9 @@ import com.example.meterdemo.viewmodel.MainViewModel
 private enum class Screen {
     Main,
     Settings,
-    Logs
+    Logs,
+    EditMeter,
+    AddMeter
 }
 
 @Composable
@@ -37,6 +39,7 @@ fun MeterDemoApp(viewModel: MainViewModel) {
             logs = logs,
             onBack = { currentScreen = Screen.Main },
             onProfileSelected = viewModel::selectProfile,
+            onOpenEditMeter = { currentScreen = Screen.EditMeter },
             onSlaveIdChange = viewModel::updateSlaveIdInput,
             onApplySlaveId = viewModel::applySlaveId,
             onOpenLogs = { currentScreen = Screen.Logs },
@@ -49,6 +52,56 @@ fun MeterDemoApp(viewModel: MainViewModel) {
             logs = logs,
             onBack = { currentScreen = Screen.Settings },
             onClearLogs = viewModel::clearLogs
+        )
+
+        Screen.EditMeter -> EditMeterScreen(
+            uiState = uiState,
+            onBack = { currentScreen = Screen.Settings },
+            onCreateMeter = {
+                viewModel.startNewUserMeter()
+                currentScreen = Screen.AddMeter
+            },
+            onEditMeter = { modelId ->
+                viewModel.startEditingUserMeter(modelId)
+                currentScreen = Screen.AddMeter
+            },
+            onDeleteMeters = viewModel::deleteUserMeters
+        )
+
+        Screen.AddMeter -> AddMeterScreen(
+            uiState = uiState,
+            onBack = { currentScreen = Screen.EditMeter },
+            onProfileNameChange = viewModel::updateEditDraftProfileName,
+            onModelIdChange = viewModel::updateEditDraftModelId,
+            onSlaveIdChange = viewModel::updateEditDraftSlaveId,
+            onFunctionCodeChange = viewModel::updateEditDraftFunctionCode,
+            onRegisterNameChange = { index, value ->
+                viewModel.updateEditDraftRegister(index) { copy(name = value) }
+            },
+            onRegisterAddressChange = { index, value ->
+                viewModel.updateEditDraftRegister(index) { copy(addressInput = value) }
+            },
+            onRegisterGainChange = { index, value ->
+                viewModel.updateEditDraftRegister(index) { copy(gainInput = value) }
+            },
+            onRegisterUnitChange = { index, value ->
+                viewModel.updateEditDraftRegister(index) { copy(unit = value) }
+            },
+            onRegisterInitialValueChange = { index, value ->
+                viewModel.updateEditDraftRegister(index) { copy(initialRawValueInput = value) }
+            },
+            onRegisterDataTypeChange = { index ->
+                viewModel.updateEditDraftRegister(index) { copy(dataType = dataType.next()) }
+            },
+            onRegisterWordByteOrderChange = { index ->
+                viewModel.updateEditDraftRegister(index) { copy(wordByteOrder = wordByteOrder.next()) }
+            },
+            onAddRegister = viewModel::addEditDraftRegister,
+            onApply = {
+                if (viewModel.saveMeterDraft()) {
+                    currentScreen = Screen.EditMeter
+                }
+            }
         )
     }
 }

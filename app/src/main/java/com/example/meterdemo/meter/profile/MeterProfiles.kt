@@ -4,7 +4,9 @@ import com.example.meterdemo.meter.model.MeterProfile
 
 object MeterProfiles {
     private val profiles: List<MeterProfile> = listOf(
-        SampleMeterV1Profile.profile
+        SampleMeterV1Profile.profile,
+        SampleMeterV2Profile.profile,
+        SampleMeterLiteProfile.profile
     )
 
     fun all(): List<MeterProfile> = profiles

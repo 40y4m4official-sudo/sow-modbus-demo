@@ -1,29 +1,44 @@
 package com.example.meterdemo.viewmodel
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import com.example.meterdemo.logging.CommLog
 import com.example.meterdemo.logging.CommLogger
+import com.example.meterdemo.meter.model.DataType
+import com.example.meterdemo.meter.model.MeterPoint
 import com.example.meterdemo.meter.model.MeterProfile
+import com.example.meterdemo.meter.model.WordByteOrder
 import com.example.meterdemo.meter.profiles.MeterProfiles
 import com.example.meterdemo.meter.repository.MeterRepository
 import com.example.meterdemo.meter.repository.MeterValueSnapshot
 import com.example.meterdemo.modbus.ModbusCrc
 import com.example.meterdemo.modbus.ModbusFrameParser
 import com.example.meterdemo.modbus.ModbusRtuSlaveEngine
+import com.example.meterdemo.persistence.MeterPersistence
+import com.example.meterdemo.persistence.PersistedMeterState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-class MainViewModel : ViewModel() {
+class MainViewModel(application: Application) : AndroidViewModel(application) {
 
+    private val builtinProfiles = MeterProfiles.all()
+    private val userProfiles = mutableListOf<MeterProfile>()
     private val repository = MeterRepository(MeterProfiles.default())
     private val engine = ModbusRtuSlaveEngine(repository)
     private val logger = CommLogger()
+    private val persistence = MeterPersistence(application)
 
-    private val _uiState = MutableStateFlow(createUiState())
-    val uiState: StateFlow<MainUiState> = _uiState.asStateFlow()
+    private val _uiState: MutableStateFlow<MainUiState>
+    val uiState: StateFlow<MainUiState>
+        get() = _uiState.asStateFlow()
 
     val logs: StateFlow<List<CommLog>> = logger.logs
+
+    init {
+        restorePersistedState()
+        _uiState = MutableStateFlow(createUiState())
+    }
 
     fun nextPoint() {
         val snapshots = repository.snapshot()
@@ -35,11 +50,7 @@ class MainViewModel : ViewModel() {
     fun previousPoint() {
         val snapshots = repository.snapshot()
         val currentIndex = _uiState.value.selectedPointIndex
-        val previousIndex = if (snapshots.isEmpty()) {
-            0
-        } else {
-            (currentIndex - 1 + snapshots.size) % snapshots.size
-        }
+        val previousIndex = if (snapshots.isEmpty()) 0 else (currentIndex - 1 + snapshots.size) % snapshots.size
         refreshUiState(selectedPointIndex = previousIndex)
     }
 
@@ -63,12 +74,14 @@ class MainViewModel : ViewModel() {
         }
 
         logger.info("Updated raw value: address=${point.address}, value=$value")
+        persistState()
         refreshUiState(selectedPointIndex = state.selectedPointIndex)
     }
 
     fun resetValues() {
         repository.resetCurrentProfileValues()
         logger.info("Reset all register values")
+        persistState()
         refreshUiState(selectedPointIndex = _uiState.value.selectedPointIndex)
     }
 
@@ -88,11 +101,12 @@ class MainViewModel : ViewModel() {
             return
         }
         logger.info("Updated slave ID: $slaveId")
+        persistState()
         refreshUiState(selectedPointIndex = state.selectedPointIndex)
     }
 
     fun selectProfile(modelId: String) {
-        val profile = MeterProfiles.findByModelId(modelId)
+        val profile = allProfiles().firstOrNull { it.modelId == modelId }
         if (profile == null) {
             logger.error("Preset not found: $modelId")
             return
@@ -100,6 +114,7 @@ class MainViewModel : ViewModel() {
 
         repository.loadProfile(profile)
         logger.info("Switched preset: ${profile.displayName}")
+        persistState()
         refreshUiState(selectedPointIndex = 0)
     }
 
@@ -138,14 +153,151 @@ class MainViewModel : ViewModel() {
         refreshUiState(selectedPointIndex = _uiState.value.selectedPointIndex)
     }
 
+    fun startNewUserMeter() {
+        refreshUiState(
+            editingExistingUserMeter = false,
+            selectedEditableUserModelId = null,
+            editMeterDraft = defaultMeterDraft(
+                displayName = "New Meter",
+                modelId = "custom-meter-${userProfiles.size + 1}",
+                slaveId = repository.getSlaveId()
+            )
+        )
+    }
+
+    fun startEditingUserMeter(modelId: String) {
+        val profile = userProfiles.firstOrNull { it.modelId == modelId }
+        if (profile == null) {
+            logger.error("User meter not found: $modelId")
+            return
+        }
+
+        refreshUiState(
+            editingExistingUserMeter = true,
+            selectedEditableUserModelId = modelId,
+            editMeterDraft = profile.toDraft()
+        )
+    }
+
+    fun deleteUserMeters(modelIds: Set<String>) {
+        if (modelIds.isEmpty()) return
+
+        userProfiles.removeAll { profile -> modelIds.contains(profile.modelId) }
+
+        if (modelIds.contains(repository.getProfile().modelId)) {
+            repository.loadProfile(builtinProfiles.first())
+        }
+
+        logger.info("Deleted ${modelIds.size} user meter(s)")
+        persistState()
+        refreshUiState(
+            editingExistingUserMeter = false,
+            selectedEditableUserModelId = null
+        )
+    }
+
+    fun updateEditDraftProfileName(value: String) {
+        refreshUiState(editMeterDraft = _uiState.value.editMeterDraft.copy(displayName = value))
+    }
+
+    fun updateEditDraftModelId(value: String) {
+        refreshUiState(editMeterDraft = _uiState.value.editMeterDraft.copy(modelId = value))
+    }
+
+    fun updateEditDraftSlaveId(value: String) {
+        refreshUiState(editMeterDraft = _uiState.value.editMeterDraft.copy(slaveIdInput = value))
+    }
+
+    fun updateEditDraftFunctionCode(value: Int) {
+        refreshUiState(editMeterDraft = _uiState.value.editMeterDraft.copy(functionCode = value))
+    }
+
+    fun updateEditDraftRegister(index: Int, update: MeterRegisterDraft.() -> MeterRegisterDraft) {
+        val state = _uiState.value
+        if (index !in state.editMeterDraft.registers.indices) return
+
+        val updatedRegisters = state.editMeterDraft.registers.toMutableList()
+        updatedRegisters[index] = updatedRegisters[index].update()
+        refreshUiState(editMeterDraft = state.editMeterDraft.copy(registers = updatedRegisters))
+    }
+
+    fun addEditDraftRegister() {
+        val state = _uiState.value
+        val nextIndex = state.editMeterDraft.registers.size + 1
+        val updatedRegisters = state.editMeterDraft.registers + MeterRegisterDraft(
+            name = "Register $nextIndex",
+            addressInput = "",
+            gainInput = "1",
+            unit = "",
+            initialRawValueInput = "0",
+            dataType = DataType.INT16,
+            wordByteOrder = WordByteOrder.MSB_MSB
+        )
+        refreshUiState(editMeterDraft = state.editMeterDraft.copy(registers = updatedRegisters))
+    }
+
+    fun saveMeterDraft(): Boolean {
+        val state = _uiState.value
+        val profile = buildProfileFromDraft(state.editMeterDraft) ?: return false
+
+        return if (state.editingExistingUserMeter) {
+            val originalModelId = state.selectedEditableUserModelId ?: return false
+            val duplicateExists = allProfiles().any { it.modelId == profile.modelId && it.modelId != originalModelId }
+            if (duplicateExists) {
+                logger.error("Model ID already exists: ${profile.modelId}")
+                false
+            } else {
+                val index = userProfiles.indexOfFirst { it.modelId == originalModelId }
+                if (index == -1) {
+                    logger.error("User meter not found")
+                    false
+                } else {
+                    userProfiles[index] = profile
+                    if (repository.getProfile().modelId == originalModelId) {
+                        repository.loadProfile(profile)
+                    }
+                    logger.info("Updated user meter: ${profile.displayName}")
+                    persistState()
+                    refreshUiState(
+                        editingExistingUserMeter = true,
+                        selectedEditableUserModelId = profile.modelId,
+                        editMeterDraft = profile.toDraft()
+                    )
+                    true
+                }
+            }
+        } else {
+            val duplicateExists = allProfiles().any { it.modelId == profile.modelId }
+            if (duplicateExists) {
+                logger.error("Model ID already exists: ${profile.modelId}")
+                false
+            } else {
+                userProfiles += profile
+                logger.info("Added user meter: ${profile.displayName}")
+                persistState()
+                refreshUiState(
+                    editingExistingUserMeter = false,
+                    selectedEditableUserModelId = null,
+                    editMeterDraft = defaultMeterDraft(
+                        displayName = "New Meter",
+                        modelId = "custom-meter-${userProfiles.size + 1}",
+                        slaveId = repository.getSlaveId()
+                    )
+                )
+                true
+            }
+        }
+    }
+
     private fun simulateRead(address: Int) {
+        val registerCount = repository.findPoint(address)?.registerCount ?: 1
         val requestWithoutCrc = byteArrayOf(
             repository.getSlaveId().toByte(),
             repository.getFunctionCode().toByte(),
             ((address shr 8) and 0xFF).toByte(),
             (address and 0xFF).toByte(),
             0x00,
-            0x01
+            registerCount.toByte()
         )
 
         val request = ModbusCrc.appendCrc(requestWithoutCrc)
@@ -161,10 +313,70 @@ class MainViewModel : ViewModel() {
         refreshUiState(selectedPointIndex = _uiState.value.selectedPointIndex)
     }
 
+    private fun buildProfileFromDraft(draft: MeterEditorDraft): MeterProfile? {
+        val displayName = draft.displayName.trim()
+        val modelId = draft.modelId.trim()
+        val slaveId = draft.slaveIdInput.toIntOrNull()
+
+        if (displayName.isBlank()) {
+            logger.error("Profile name is required")
+            return null
+        }
+        if (modelId.isBlank()) {
+            logger.error("Model ID is required")
+            return null
+        }
+        if (slaveId == null || slaveId !in 1..247) {
+            logger.error("Draft Slave ID must be in range 1..247")
+            return null
+        }
+        if (draft.functionCode !in setOf(0x03, 0x04)) {
+            logger.error("Read function must be 03H or 04H")
+            return null
+        }
+
+        val points = draft.registers.mapIndexed { index, register ->
+            val address = register.addressInput.toIntOrNull()
+            val gain = register.gainInput.toIntOrNull()
+            val initialRawValue = register.initialRawValueInput.toIntOrNull()
+
+            if (register.name.isBlank() || address == null || gain == null || initialRawValue == null) {
+                logger.error("Register ${index + 1} has invalid values")
+                return null
+            }
+
+            MeterPoint(
+                name = register.name,
+                address = address,
+                registerCount = register.dataType.registerCount,
+                gain = gain,
+                dataType = register.dataType,
+                wordByteOrder = register.wordByteOrder,
+                unit = register.unit,
+                initialRawValue = initialRawValue
+            )
+        }
+
+        return MeterProfile(
+            modelId = modelId,
+            displayName = displayName,
+            slaveId = slaveId,
+            baudRate = 19200,
+            dataBits = 8,
+            parity = 2,
+            stopBits = 1,
+            functionCode = draft.functionCode,
+            points = points
+        )
+    }
+
     private fun refreshUiState(
         selectedPointIndex: Int = _uiState.value.selectedPointIndex,
         rawValueInput: String? = null,
-        slaveIdInput: String? = null
+        slaveIdInput: String? = null,
+        editingExistingUserMeter: Boolean = _uiState.value.editingExistingUserMeter,
+        selectedEditableUserModelId: String? = _uiState.value.selectedEditableUserModelId,
+        editMeterDraft: MeterEditorDraft = _uiState.value.editMeterDraft
     ) {
         val snapshots = repository.snapshot()
         val safeIndex = when {
@@ -178,13 +390,17 @@ class MainViewModel : ViewModel() {
         _uiState.value = MainUiState(
             profileName = repository.getProfile().displayName,
             profileModelId = repository.getProfile().modelId,
-            profiles = MeterProfiles.all(),
+            builtinProfiles = builtinProfiles,
+            userProfiles = userProfiles.toList(),
             slaveId = repository.getSlaveId(),
             slaveIdInput = slaveIdInput ?: repository.getSlaveId().toString(),
             points = snapshots,
             selectedPointIndex = safeIndex,
             selectedPoint = selectedPoint,
-            rawValueInput = rawValueInput ?: selectedPoint?.rawValue?.toString().orEmpty()
+            rawValueInput = rawValueInput ?: selectedPoint?.rawValue?.toString().orEmpty(),
+            editingExistingUserMeter = editingExistingUserMeter,
+            selectedEditableUserModelId = selectedEditableUserModelId,
+            editMeterDraft = editMeterDraft
         )
     }
 
@@ -194,14 +410,94 @@ class MainViewModel : ViewModel() {
         return MainUiState(
             profileName = repository.getProfile().displayName,
             profileModelId = repository.getProfile().modelId,
-            profiles = MeterProfiles.all(),
+            builtinProfiles = builtinProfiles,
+            userProfiles = userProfiles.toList(),
             slaveId = repository.getSlaveId(),
             slaveIdInput = repository.getSlaveId().toString(),
             points = snapshots,
             selectedPointIndex = 0,
             selectedPoint = selectedPoint,
-            rawValueInput = selectedPoint?.rawValue?.toString().orEmpty()
+            rawValueInput = selectedPoint?.rawValue?.toString().orEmpty(),
+            editingExistingUserMeter = false,
+            selectedEditableUserModelId = null,
+            editMeterDraft = defaultMeterDraft(
+                displayName = "New Meter",
+                modelId = "custom-meter-1",
+                slaveId = repository.getSlaveId()
+            )
         )
+    }
+
+    private fun defaultMeterDraft(
+        displayName: String,
+        modelId: String,
+        slaveId: Int
+    ): MeterEditorDraft {
+        return MeterEditorDraft(
+            displayName = displayName,
+            modelId = modelId,
+            slaveIdInput = slaveId.toString(),
+            functionCode = 0x03,
+            registers = listOf(
+                MeterRegisterDraft("Phase A Current", "768", "1", "A", "15"),
+                MeterRegisterDraft("Phase B Current", "769", "1", "A", "16"),
+                MeterRegisterDraft("Phase C Current", "770", "1", "A", "14"),
+                MeterRegisterDraft("Line Voltage A-B", "778", "1", "V", "210"),
+                MeterRegisterDraft("Line Voltage B-C", "779", "1", "V", "211"),
+                MeterRegisterDraft("Line Voltage C-A", "780", "1", "V", "209"),
+                MeterRegisterDraft("Active Power", "794", "1", "W", "5200"),
+                MeterRegisterDraft("Import Active Energy Total", "1304", "100", "kWh", "12345"),
+                MeterRegisterDraft("Export Active Energy Total", "1306", "100", "kWh", "67")
+            )
+        )
+    }
+
+    private fun MeterProfile.toDraft(): MeterEditorDraft {
+        return MeterEditorDraft(
+            displayName = displayName,
+            modelId = modelId,
+            slaveIdInput = slaveId.toString(),
+            functionCode = functionCode,
+            registers = points.map { point ->
+                MeterRegisterDraft(
+                    name = point.name,
+                    addressInput = point.address.toString(),
+                    gainInput = point.gain.toString(),
+                    unit = point.unit,
+                    initialRawValueInput = point.initialRawValue.toString(),
+                    dataType = point.dataType,
+                    wordByteOrder = point.wordByteOrder
+                )
+            }
+        )
+    }
+
+    private fun allProfiles(): List<MeterProfile> = builtinProfiles + userProfiles
+
+    private fun persistState() {
+        persistence.saveState(
+            PersistedMeterState(
+                userProfiles = userProfiles.toList(),
+                selectedProfileModelId = repository.getProfile().modelId,
+                currentSlaveId = repository.getSlaveId(),
+                currentRawValues = repository.snapshot().associate { it.address to it.rawValue }
+            )
+        )
+    }
+
+    private fun restorePersistedState() {
+        val persisted = persistence.loadState() ?: return
+        userProfiles.clear()
+        userProfiles.addAll(persisted.userProfiles)
+
+        val profileToLoad = allProfiles().firstOrNull { it.modelId == persisted.selectedProfileModelId }
+            ?: repository.getProfile()
+        repository.loadProfile(profileToLoad)
+
+        persisted.currentSlaveId?.let(repository::setSlaveId)
+        persisted.currentRawValues.forEach { (address, value) ->
+            repository.setRawValue(address, value)
+        }
     }
 
     private fun parseHexString(input: String): ByteArray? {
@@ -225,11 +521,36 @@ class MainViewModel : ViewModel() {
 data class MainUiState(
     val profileName: String,
     val profileModelId: String,
-    val profiles: List<MeterProfile>,
+    val builtinProfiles: List<MeterProfile>,
+    val userProfiles: List<MeterProfile>,
     val slaveId: Int,
     val slaveIdInput: String,
     val points: List<MeterValueSnapshot>,
     val selectedPointIndex: Int,
     val selectedPoint: MeterValueSnapshot?,
-    val rawValueInput: String
+    val rawValueInput: String,
+    val editingExistingUserMeter: Boolean,
+    val selectedEditableUserModelId: String?,
+    val editMeterDraft: MeterEditorDraft
+) {
+    val allProfiles: List<MeterProfile>
+        get() = builtinProfiles + userProfiles
+}
+
+data class MeterEditorDraft(
+    val displayName: String,
+    val modelId: String,
+    val slaveIdInput: String,
+    val functionCode: Int,
+    val registers: List<MeterRegisterDraft>
+)
+
+data class MeterRegisterDraft(
+    val name: String,
+    val addressInput: String,
+    val gainInput: String,
+    val unit: String,
+    val initialRawValueInput: String,
+    val dataType: DataType = DataType.INT16,
+    val wordByteOrder: WordByteOrder = WordByteOrder.MSB_MSB
 )

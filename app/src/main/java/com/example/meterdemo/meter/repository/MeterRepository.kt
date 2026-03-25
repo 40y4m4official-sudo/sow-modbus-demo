@@ -40,6 +40,26 @@ class MeterRepository(
 
     fun findPoint(address: Int): MeterPoint? = currentProfile.findPoint(address)
 
+    fun findPointsForRead(startAddress: Int, quantity: Int): List<MeterPoint>? {
+        if (quantity <= 0) return null
+
+        val result = mutableListOf<MeterPoint>()
+        var consumedRegisters = 0
+        var currentAddress = startAddress
+
+        while (consumedRegisters < quantity) {
+            val point = currentProfile.findPoint(currentAddress) ?: return null
+            if (consumedRegisters + point.registerCount > quantity) {
+                return null
+            }
+            result += point
+            consumedRegisters += point.registerCount
+            currentAddress += point.registerCount
+        }
+
+        return result
+    }
+
     fun hasAddress(address: Int): Boolean = rawValues.containsKey(address)
 
     fun getRawValue(address: Int): Int? = rawValues[address]

@@ -32,18 +32,11 @@ fun LogsScreen(
             .fillMaxSize()
             .padding(20.dp)
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(
-                text = "Communication Logs",
-                style = MaterialTheme.typography.headlineMedium
-            )
-            OutlinedButton(onClick = onBack) {
-                Text("Back")
-            }
-        }
+        ScreenHeader(
+            title = "Communication Logs",
+            trailingText = "Back",
+            onTrailingClick = onBack
+        )
 
         Row(
             modifier = Modifier

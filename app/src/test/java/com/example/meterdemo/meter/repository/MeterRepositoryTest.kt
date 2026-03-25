@@ -83,6 +83,14 @@ class MeterRepositoryTest {
     }
 
     @Test
+    fun findPointsForRead_contiguousAddresses_returnsAllRequestedPoints() {
+        val points = repository.findPointsForRead(startAddress = 768, quantity = 3)
+
+        assertNotNull(points)
+        assertEquals(listOf(768, 769, 770), points!!.map { it.address })
+    }
+
+    @Test
     fun resetCurrentProfileValues_restoresInitialValues() {
         repository.setRawValue(768, 99)
         repository.setRawValue(1304, 500)
