@@ -24,7 +24,7 @@ class MeterRepositoryTest {
     fun getProfile_returnsDefaultProfile() {
         val profile = repository.getProfile()
 
-        assertEquals("sample-meter-v1", profile.modelId)
+        assertEquals("backup-ct", profile.modelId)
         assertEquals(2, profile.slaveId)
         assertEquals(0x03, profile.functionCode)
     }

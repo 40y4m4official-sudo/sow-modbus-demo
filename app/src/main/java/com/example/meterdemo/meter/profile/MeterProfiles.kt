@@ -4,15 +4,13 @@ import com.example.meterdemo.meter.model.MeterProfile
 
 object MeterProfiles {
     private val profiles: List<MeterProfile> = listOf(
-        SampleMeterV1Profile.profile,
-        SampleMeterV2Profile.profile,
-        SampleMeterLiteProfile.profile,
-        BackUpCtProfile.profile
+        BackUpCtProfile.profile,
+        MitsubishiMe110SsrMbProfile.profile
     )
 
     fun all(): List<MeterProfile> = profiles
 
-    fun default(): MeterProfile = SampleMeterV1Profile.profile
+    fun default(): MeterProfile = BackUpCtProfile.profile
 
     fun findByModelId(modelId: String): MeterProfile? {
         return profiles.firstOrNull { it.modelId == modelId }
