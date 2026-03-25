@@ -1,6 +1,7 @@
 package com.example.meterdemo.viewmodel
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import com.example.meterdemo.logging.CommLog
 import com.example.meterdemo.logging.CommLogger
 import com.example.meterdemo.meter.model.DataType
@@ -12,22 +13,31 @@ import com.example.meterdemo.meter.repository.MeterValueSnapshot
 import com.example.meterdemo.modbus.ModbusCrc
 import com.example.meterdemo.modbus.ModbusFrameParser
 import com.example.meterdemo.modbus.ModbusRtuSlaveEngine
+import com.example.meterdemo.persistence.MeterPersistence
+import com.example.meterdemo.persistence.PersistedMeterState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-class MainViewModel : ViewModel() {
+class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val builtinProfiles = MeterProfiles.all()
     private val userProfiles = mutableListOf<MeterProfile>()
     private val repository = MeterRepository(MeterProfiles.default())
     private val engine = ModbusRtuSlaveEngine(repository)
     private val logger = CommLogger()
+    private val persistence = MeterPersistence(application)
 
-    private val _uiState = MutableStateFlow(createUiState())
-    val uiState: StateFlow<MainUiState> = _uiState.asStateFlow()
+    private val _uiState: MutableStateFlow<MainUiState>
+    val uiState: StateFlow<MainUiState>
+        get() = _uiState.asStateFlow()
 
     val logs: StateFlow<List<CommLog>> = logger.logs
+
+    init {
+        restorePersistedState()
+        _uiState = MutableStateFlow(createUiState())
+    }
 
     fun nextPoint() {
         val snapshots = repository.snapshot()
@@ -63,12 +73,14 @@ class MainViewModel : ViewModel() {
         }
 
         logger.info("Updated raw value: address=${point.address}, value=$value")
+        persistState()
         refreshUiState(selectedPointIndex = state.selectedPointIndex)
     }
 
     fun resetValues() {
         repository.resetCurrentProfileValues()
         logger.info("Reset all register values")
+        persistState()
         refreshUiState(selectedPointIndex = _uiState.value.selectedPointIndex)
     }
 
@@ -88,6 +100,7 @@ class MainViewModel : ViewModel() {
             return
         }
         logger.info("Updated slave ID: $slaveId")
+        persistState()
         refreshUiState(selectedPointIndex = state.selectedPointIndex)
     }
 
@@ -100,6 +113,7 @@ class MainViewModel : ViewModel() {
 
         repository.loadProfile(profile)
         logger.info("Switched preset: ${profile.displayName}")
+        persistState()
         refreshUiState(selectedPointIndex = 0)
     }
 
@@ -174,6 +188,7 @@ class MainViewModel : ViewModel() {
         }
 
         logger.info("Deleted ${modelIds.size} user meter(s)")
+        persistState()
         refreshUiState(
             editingExistingUserMeter = false,
             selectedEditableUserModelId = null
@@ -236,6 +251,7 @@ class MainViewModel : ViewModel() {
                         repository.loadProfile(profile)
                     }
                     logger.info("Updated user meter: ${profile.displayName}")
+                    persistState()
                     refreshUiState(
                         editingExistingUserMeter = true,
                         selectedEditableUserModelId = profile.modelId,
@@ -252,6 +268,7 @@ class MainViewModel : ViewModel() {
             } else {
                 userProfiles += profile
                 logger.info("Added user meter: ${profile.displayName}")
+                persistState()
                 refreshUiState(
                     editingExistingUserMeter = false,
                     selectedEditableUserModelId = null,
@@ -441,6 +458,32 @@ class MainViewModel : ViewModel() {
     }
 
     private fun allProfiles(): List<MeterProfile> = builtinProfiles + userProfiles
+
+    private fun persistState() {
+        persistence.saveState(
+            PersistedMeterState(
+                userProfiles = userProfiles.toList(),
+                selectedProfileModelId = repository.getProfile().modelId,
+                currentSlaveId = repository.getSlaveId(),
+                currentRawValues = repository.snapshot().associate { it.address to it.rawValue }
+            )
+        )
+    }
+
+    private fun restorePersistedState() {
+        val persisted = persistence.loadState() ?: return
+        userProfiles.clear()
+        userProfiles.addAll(persisted.userProfiles)
+
+        val profileToLoad = allProfiles().firstOrNull { it.modelId == persisted.selectedProfileModelId }
+            ?: repository.getProfile()
+        repository.loadProfile(profileToLoad)
+
+        persisted.currentSlaveId?.let(repository::setSlaveId)
+        persisted.currentRawValues.forEach { (address, value) ->
+            repository.setRawValue(address, value)
+        }
+    }
 
     private fun parseHexString(input: String): ByteArray? {
         val cleaned = input
