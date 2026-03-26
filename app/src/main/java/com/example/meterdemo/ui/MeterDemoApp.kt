@@ -44,6 +44,7 @@ fun MeterDemoApp(viewModel: MainViewModel) {
             onApplySlaveId = viewModel::applySlaveId,
             onOpenLogs = { currentScreen = Screen.Logs },
             onRefreshLogs = viewModel::refreshLogs,
+            onRefreshUsbDevices = viewModel::refreshUsbDevices,
             onSimulateRead = viewModel::simulateReadOfSelectedPoint,
             onSimulateCustomRequest = viewModel::simulateCustomRequest
         )

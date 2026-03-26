@@ -46,6 +46,7 @@ fun SettingsScreen(
     onApplySlaveId: () -> Unit,
     onOpenLogs: () -> Unit,
     onRefreshLogs: () -> Unit,
+    onRefreshUsbDevices: () -> Unit,
     onSimulateRead: () -> Unit,
     onSimulateCustomRequest: (String) -> Unit
 ) {
@@ -163,6 +164,54 @@ fun SettingsScreen(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text("Apply Slave Address")
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "USB-RS485",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = if (uiState.usbDevices.isEmpty()) {
+                            "No USB devices detected yet."
+                        } else {
+                            "Detected devices: ${uiState.usbDevices.size}"
+                        },
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    OutlinedButton(
+                        onClick = onRefreshUsbDevices,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Refresh USB Devices")
+                    }
+                    if (uiState.usbDevices.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        uiState.usbDevices.forEach { device ->
+                            Card(modifier = Modifier.fillMaxWidth()) {
+                                Column(modifier = Modifier.padding(12.dp)) {
+                                    Text(
+                                        text = device.displayLabel,
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = device.deviceName,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                        }
                     }
                 }
             }

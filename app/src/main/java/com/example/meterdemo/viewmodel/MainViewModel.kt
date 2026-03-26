@@ -17,6 +17,8 @@ import com.example.meterdemo.modbus.ModbusFrameParser
 import com.example.meterdemo.modbus.ModbusRtuSlaveEngine
 import com.example.meterdemo.persistence.MeterPersistence
 import com.example.meterdemo.persistence.PersistedMeterState
+import com.example.meterdemo.usb.UsbDeviceScanner
+import com.example.meterdemo.usb.UsbDeviceSummary
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -31,6 +33,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val engine = ModbusRtuSlaveEngine(repository)
     private val logger = CommLogger()
     private val persistence = MeterPersistence(application)
+    private val usbDeviceScanner = UsbDeviceScanner(application)
 
     private val _uiState: MutableStateFlow<MainUiState>
     val uiState: StateFlow<MainUiState>
@@ -124,6 +127,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun refreshLogs() {
         logger.info("Refreshed logs")
         refreshUiState(selectedPointIndex = _uiState.value.selectedPointIndex)
+    }
+
+    fun refreshUsbDevices() {
+        val devices = usbDeviceScanner.scan()
+        logger.info("Detected ${devices.size} USB device(s)")
+        refreshUiState(
+            selectedPointIndex = _uiState.value.selectedPointIndex,
+            usbDevices = devices
+        )
     }
 
     fun clearLogs() {
@@ -459,6 +471,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         selectedPointIndex: Int = _uiState.value.selectedPointIndex,
         rawValueInput: String? = null,
         slaveIdInput: String? = null,
+        usbDevices: List<UsbDeviceSummary> = _uiState.value.usbDevices,
         editingExistingUserMeter: Boolean = _uiState.value.editingExistingUserMeter,
         draftReadOnly: Boolean = _uiState.value.draftReadOnly,
         selectedEditableUserModelId: String? = _uiState.value.selectedEditableUserModelId,
@@ -481,6 +494,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             userProfiles = userProfiles.toList(),
             slaveId = repository.getSlaveId(),
             slaveIdInput = slaveIdInput ?: repository.getSlaveId().toString(),
+            usbDevices = usbDevices,
             points = snapshots,
             selectedPointIndex = safeIndex,
             selectedPoint = selectedPoint,
@@ -503,6 +517,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             userProfiles = userProfiles.toList(),
             slaveId = repository.getSlaveId(),
             slaveIdInput = repository.getSlaveId().toString(),
+            usbDevices = usbDeviceScanner.scan(),
             points = snapshots,
             selectedPointIndex = 0,
             selectedPoint = selectedPoint,
@@ -667,6 +682,7 @@ data class MainUiState(
     val userProfiles: List<MeterProfile>,
     val slaveId: Int,
     val slaveIdInput: String,
+    val usbDevices: List<UsbDeviceSummary>,
     val points: List<MeterValueSnapshot>,
     val selectedPointIndex: Int,
     val selectedPoint: MeterValueSnapshot?,
