@@ -45,6 +45,9 @@ fun MeterDemoApp(viewModel: MainViewModel) {
             onOpenLogs = { currentScreen = Screen.Logs },
             onRefreshLogs = viewModel::refreshLogs,
             onRefreshUsbDevices = viewModel::refreshUsbDevices,
+            onRequestUsbPermission = viewModel::requestUsbSerialPermission,
+            onConnectUsbDevice = viewModel::connectUsbSerial,
+            onDisconnectUsbDevice = viewModel::disconnectUsbSerial,
             onSimulateRead = viewModel::simulateReadOfSelectedPoint,
             onSimulateCustomRequest = viewModel::simulateCustomRequest
         )

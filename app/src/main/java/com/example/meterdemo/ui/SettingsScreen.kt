@@ -47,6 +47,9 @@ fun SettingsScreen(
     onOpenLogs: () -> Unit,
     onRefreshLogs: () -> Unit,
     onRefreshUsbDevices: () -> Unit,
+    onRequestUsbPermission: (String) -> Unit,
+    onConnectUsbDevice: (String) -> Unit,
+    onDisconnectUsbDevice: () -> Unit,
     onSimulateRead: () -> Unit,
     onSimulateCustomRequest: (String) -> Unit
 ) {
@@ -185,6 +188,20 @@ fun SettingsScreen(
                         },
                         style = MaterialTheme.typography.bodyMedium
                     )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Connection: ${uiState.usbConnectionStatus}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    uiState.connectedUsbDeviceName?.let { deviceName ->
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Connected device: $deviceName",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                     Spacer(modifier = Modifier.height(12.dp))
                     OutlinedButton(
                         onClick = onRefreshUsbDevices,
@@ -204,6 +221,7 @@ fun SettingsScreen(
                     if (uiState.usbSerialDevices.isNotEmpty()) {
                         Spacer(modifier = Modifier.height(12.dp))
                         uiState.usbSerialDevices.forEach { device ->
+                            val isConnected = uiState.connectedUsbDeviceName == device.deviceName
                             Card(modifier = Modifier.fillMaxWidth()) {
                                 Column(modifier = Modifier.padding(12.dp)) {
                                     Text(
@@ -223,6 +241,34 @@ fun SettingsScreen(
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                    ) {
+                                        OutlinedButton(
+                                            onClick = { onRequestUsbPermission(device.deviceName) },
+                                            modifier = Modifier.weight(1f)
+                                        ) {
+                                            Text("Permission")
+                                        }
+                                        if (isConnected) {
+                                            Button(
+                                                onClick = onDisconnectUsbDevice,
+                                                modifier = Modifier.weight(1f)
+                                            ) {
+                                                Text("Disconnect")
+                                            }
+                                        } else {
+                                            Button(
+                                                onClick = { onConnectUsbDevice(device.deviceName) },
+                                                modifier = Modifier.weight(1f),
+                                                enabled = device.hasPermission
+                                            ) {
+                                                Text("Connect 19200 8E1")
+                                            }
+                                        }
+                                    }
                                 }
                             }
                             Spacer(modifier = Modifier.height(8.dp))

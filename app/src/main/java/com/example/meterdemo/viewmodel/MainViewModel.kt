@@ -19,13 +19,13 @@ import com.example.meterdemo.persistence.MeterPersistence
 import com.example.meterdemo.persistence.PersistedMeterState
 import com.example.meterdemo.usb.UsbDeviceScanner
 import com.example.meterdemo.usb.UsbDeviceSummary
+import com.example.meterdemo.usb.UsbSerialConnectionManager
 import com.example.meterdemo.usb.UsbSerialDeviceSummary
 import com.example.meterdemo.usb.UsbSerialScanner
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlin.math.roundToInt
-import kotlin.math.roundToLong
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -37,6 +37,56 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val persistence = MeterPersistence(application)
     private val usbDeviceScanner = UsbDeviceScanner(application)
     private val usbSerialScanner = UsbSerialScanner(application)
+    private val usbReceiveBuffer = mutableListOf<Byte>()
+    private val usbSerialConnectionManager = UsbSerialConnectionManager(
+        context = application,
+        listener = object : UsbSerialConnectionManager.Listener {
+            override fun onPermissionResult(deviceName: String, granted: Boolean) {
+                if (granted) {
+                    logger.info("USB permission granted: $deviceName")
+                } else {
+                    logger.error("USB permission denied: $deviceName")
+                }
+                refreshUsbDevices()
+            }
+
+            override fun onConnected(deviceName: String) {
+                logger.info("USB serial connected: $deviceName (19200 8E1)")
+                refreshUiState(
+                    selectedPointIndex = _uiState.value.selectedPointIndex,
+                    usbConnectionStatus = "Connected",
+                    connectedUsbDeviceName = deviceName
+                )
+                refreshUsbDevices()
+            }
+
+            override fun onDisconnected(deviceName: String?, reason: String) {
+                if (deviceName != null) {
+                    logger.info("USB serial disconnected: $deviceName ($reason)")
+                }
+                usbReceiveBuffer.clear()
+                refreshUiState(
+                    selectedPointIndex = _uiState.value.selectedPointIndex,
+                    usbConnectionStatus = reason,
+                    connectedUsbDeviceName = null
+                )
+                refreshUsbDevices()
+            }
+
+            override fun onDataReceived(data: ByteArray) {
+                logger.rx(ModbusFrameParser.toHexString(data), "USB RX")
+                appendUsbData(data)
+            }
+
+            override fun onError(message: String) {
+                logger.error(message)
+                refreshUiState(
+                    selectedPointIndex = _uiState.value.selectedPointIndex,
+                    usbConnectionStatus = "Error"
+                )
+            }
+        }
+    )
 
     private val _uiState: MutableStateFlow<MainUiState>
     val uiState: StateFlow<MainUiState>
@@ -141,6 +191,33 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             usbDevices = devices,
             usbSerialDevices = serialDevices
         )
+    }
+
+    fun requestUsbSerialPermission(deviceName: String) {
+        if (!usbSerialConnectionManager.requestPermission(deviceName)) {
+            logger.error("Failed to request USB permission: $deviceName")
+        } else {
+            logger.info("Requested USB permission: $deviceName")
+        }
+    }
+
+    fun connectUsbSerial(deviceName: String) {
+        refreshUiState(
+            selectedPointIndex = _uiState.value.selectedPointIndex,
+            usbConnectionStatus = "Connecting...",
+            connectedUsbDeviceName = _uiState.value.connectedUsbDeviceName
+        )
+        if (!usbSerialConnectionManager.connect(deviceName)) {
+            refreshUiState(
+                selectedPointIndex = _uiState.value.selectedPointIndex,
+                usbConnectionStatus = "Connect failed",
+                connectedUsbDeviceName = null
+            )
+        }
+    }
+
+    fun disconnectUsbSerial() {
+        usbSerialConnectionManager.disconnect()
     }
 
     fun clearLogs() {
@@ -478,6 +555,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         slaveIdInput: String? = null,
         usbDevices: List<UsbDeviceSummary> = _uiState.value.usbDevices,
         usbSerialDevices: List<UsbSerialDeviceSummary> = _uiState.value.usbSerialDevices,
+        usbConnectionStatus: String = _uiState.value.usbConnectionStatus,
+        connectedUsbDeviceName: String? = _uiState.value.connectedUsbDeviceName,
         editingExistingUserMeter: Boolean = _uiState.value.editingExistingUserMeter,
         draftReadOnly: Boolean = _uiState.value.draftReadOnly,
         selectedEditableUserModelId: String? = _uiState.value.selectedEditableUserModelId,
@@ -502,6 +581,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             slaveIdInput = slaveIdInput ?: repository.getSlaveId().toString(),
             usbDevices = usbDevices,
             usbSerialDevices = usbSerialDevices,
+            usbConnectionStatus = usbConnectionStatus,
+            connectedUsbDeviceName = connectedUsbDeviceName,
             points = snapshots,
             selectedPointIndex = safeIndex,
             selectedPoint = selectedPoint,
@@ -526,6 +607,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             slaveIdInput = repository.getSlaveId().toString(),
             usbDevices = usbDeviceScanner.scan(),
             usbSerialDevices = usbSerialScanner.scan(),
+            usbConnectionStatus = "Disconnected",
+            connectedUsbDeviceName = null,
             points = snapshots,
             selectedPointIndex = 0,
             selectedPoint = selectedPoint,
@@ -681,6 +764,34 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             null
         }
     }
+
+    private fun appendUsbData(data: ByteArray) {
+        usbReceiveBuffer.addAll(data.toList())
+
+        while (usbReceiveBuffer.size >= USB_REQUEST_FRAME_SIZE) {
+            val frame = usbReceiveBuffer.take(USB_REQUEST_FRAME_SIZE).toByteArray()
+            usbReceiveBuffer.subList(0, USB_REQUEST_FRAME_SIZE).clear()
+
+            val response = engine.handleRequest(frame)
+            if (response == null) {
+                logger.error("USB request was not handled")
+                continue
+            }
+
+            if (usbSerialConnectionManager.write(response)) {
+                logger.tx(ModbusFrameParser.toHexString(response), "USB TX")
+            }
+        }
+    }
+
+    override fun onCleared() {
+        usbSerialConnectionManager.release()
+        super.onCleared()
+    }
+
+    private companion object {
+        const val USB_REQUEST_FRAME_SIZE = 8
+    }
 }
 
 data class MainUiState(
@@ -692,6 +803,8 @@ data class MainUiState(
     val slaveIdInput: String,
     val usbDevices: List<UsbDeviceSummary>,
     val usbSerialDevices: List<UsbSerialDeviceSummary>,
+    val usbConnectionStatus: String,
+    val connectedUsbDeviceName: String?,
     val points: List<MeterValueSnapshot>,
     val selectedPointIndex: Int,
     val selectedPoint: MeterValueSnapshot?,
