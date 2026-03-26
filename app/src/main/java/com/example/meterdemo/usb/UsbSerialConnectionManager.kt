@@ -61,6 +61,20 @@ class UsbSerialConnectionManager(
     }
 
     fun connect(deviceName: String): Boolean {
+        return connect(
+            deviceName = deviceName,
+            baudRate = 19200,
+            parity = UsbSerialPort.PARITY_EVEN,
+            stopBits = UsbSerialPort.STOPBITS_1
+        )
+    }
+
+    fun connect(
+        deviceName: String,
+        baudRate: Int,
+        parity: Int,
+        stopBits: Int
+    ): Boolean {
         val manager = usbManager ?: return false
         val driver = findDriver(deviceName) ?: return false.also {
             listener.onError("USB serial device not found: $deviceName")
@@ -80,10 +94,10 @@ class UsbSerialConnectionManager(
                 ?: return false.also { listener.onError("No serial port found on USB device") }
             port.open(connection)
             port.setParameters(
-                19200,
+                baudRate,
                 8,
-                UsbSerialPort.STOPBITS_1,
-                UsbSerialPort.PARITY_EVEN
+                stopBits,
+                parity
             )
             port.dtr = true
             port.rts = true

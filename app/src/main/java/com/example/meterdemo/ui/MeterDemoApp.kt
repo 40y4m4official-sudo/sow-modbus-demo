@@ -83,6 +83,9 @@ fun MeterDemoApp(viewModel: MainViewModel) {
             onModelIdChange = viewModel::updateEditDraftModelId,
             onSlaveIdChange = viewModel::updateEditDraftSlaveId,
             onFunctionCodeChange = viewModel::updateEditDraftFunctionCode,
+            onBaudRateChange = viewModel::updateEditDraftBaudRate,
+            onParityChange = viewModel::updateEditDraftParity,
+            onStopBitsChange = viewModel::updateEditDraftStopBits,
             onRegisterNameChange = { index, value ->
                 viewModel.updateEditDraftRegister(index) { copy(name = value) }
             },

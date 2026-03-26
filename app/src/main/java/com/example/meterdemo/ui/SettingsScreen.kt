@@ -190,6 +190,12 @@ fun SettingsScreen(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
+                        text = "Profile serial: ${uiState.profileBaudRate} 8${uiState.profileParity.label.first()}${uiState.profileStopBits}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
                         text = "Connection: ${uiState.usbConnectionStatus}",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -265,7 +271,7 @@ fun SettingsScreen(
                                                 modifier = Modifier.weight(1f),
                                                 enabled = device.hasPermission
                                             ) {
-                                                Text("Connect 19200 8E1")
+                                                Text("Connect")
                                             }
                                         }
                                     }

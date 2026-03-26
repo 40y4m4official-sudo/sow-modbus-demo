@@ -7,6 +7,7 @@ import com.example.meterdemo.logging.CommLogger
 import com.example.meterdemo.meter.model.DataType
 import com.example.meterdemo.meter.model.MeterPoint
 import com.example.meterdemo.meter.model.MeterProfile
+import com.example.meterdemo.meter.model.SerialParity
 import com.example.meterdemo.meter.model.StandardSignalTemplates
 import com.example.meterdemo.meter.model.WordByteOrder
 import com.example.meterdemo.meter.profiles.MeterProfiles
@@ -51,7 +52,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
 
             override fun onConnected(deviceName: String) {
-                logger.info("USB serial connected: $deviceName (19200 8E1)")
+                val profile = repository.getProfile()
+                logger.info(
+                    "USB serial connected: $deviceName (${profile.baudRate} 8${parityLabel(profile.parity).first()}${profile.stopBits})"
+                )
                 refreshUiState(
                     selectedPointIndex = _uiState.value.selectedPointIndex,
                     usbConnectionStatus = "Connected",
@@ -202,12 +206,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun connectUsbSerial(deviceName: String) {
+        val profile = repository.getProfile()
         refreshUiState(
             selectedPointIndex = _uiState.value.selectedPointIndex,
             usbConnectionStatus = "Connecting...",
             connectedUsbDeviceName = _uiState.value.connectedUsbDeviceName
         )
-        if (!usbSerialConnectionManager.connect(deviceName)) {
+        if (!usbSerialConnectionManager.connect(
+                deviceName = deviceName,
+                baudRate = profile.baudRate,
+                parity = profile.parity,
+                stopBits = if (profile.stopBits == 2) 2 else 1
+            )
+        ) {
             refreshUiState(
                 selectedPointIndex = _uiState.value.selectedPointIndex,
                 usbConnectionStatus = "Connect failed",
@@ -337,6 +348,27 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun updateEditDraftFunctionCode(value: Int) {
         refreshUiState(
             editMeterDraft = _uiState.value.editMeterDraft.copy(functionCode = value),
+            draftErrorMessage = null
+        )
+    }
+
+    fun updateEditDraftBaudRate(value: Int) {
+        refreshUiState(
+            editMeterDraft = _uiState.value.editMeterDraft.copy(baudRate = value),
+            draftErrorMessage = null
+        )
+    }
+
+    fun updateEditDraftParity(value: SerialParity) {
+        refreshUiState(
+            editMeterDraft = _uiState.value.editMeterDraft.copy(parity = value),
+            draftErrorMessage = null
+        )
+    }
+
+    fun updateEditDraftStopBits(value: Int) {
+        refreshUiState(
+            editMeterDraft = _uiState.value.editMeterDraft.copy(stopBits = value),
             draftErrorMessage = null
         )
     }
@@ -476,6 +508,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             reportDraftError("Read function must be 03H or 04H")
             return null
         }
+        if (draft.baudRate !in SUPPORTED_BAUD_RATES) {
+            reportDraftError("Baud rate must be one of ${SUPPORTED_BAUD_RATES.joinToString()}")
+            return null
+        }
+        if (draft.stopBits !in setOf(1, 2)) {
+            reportDraftError("Stop bits must be 1 or 2")
+            return null
+        }
 
         val points = draft.registers.mapIndexed { index, register ->
             val trimmedAddress = register.addressInput.trim()
@@ -540,10 +580,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             modelId = modelId,
             displayName = displayName,
             slaveId = slaveId,
-            baudRate = 19200,
+            baudRate = draft.baudRate,
             dataBits = 8,
-            parity = 2,
-            stopBits = 1,
+            parity = draft.parity.profileValue,
+            stopBits = draft.stopBits,
             functionCode = draft.functionCode,
             points = points
         )
@@ -579,6 +619,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             userProfiles = userProfiles.toList(),
             slaveId = repository.getSlaveId(),
             slaveIdInput = slaveIdInput ?: repository.getSlaveId().toString(),
+            profileBaudRate = repository.getProfile().baudRate,
+            profileParity = SerialParity.fromProfileValue(repository.getProfile().parity),
+            profileStopBits = repository.getProfile().stopBits,
             usbDevices = usbDevices,
             usbSerialDevices = usbSerialDevices,
             usbConnectionStatus = usbConnectionStatus,
@@ -605,6 +648,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             userProfiles = userProfiles.toList(),
             slaveId = repository.getSlaveId(),
             slaveIdInput = repository.getSlaveId().toString(),
+            profileBaudRate = repository.getProfile().baudRate,
+            profileParity = SerialParity.fromProfileValue(repository.getProfile().parity),
+            profileStopBits = repository.getProfile().stopBits,
             usbDevices = usbDeviceScanner.scan(),
             usbSerialDevices = usbSerialScanner.scan(),
             usbConnectionStatus = "Disconnected",
@@ -635,6 +681,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             modelId = modelId,
             slaveIdInput = slaveId.toString(),
             functionCode = 0x03,
+            baudRate = 19200,
+            parity = SerialParity.EVEN,
+            stopBits = 1,
             registers = standardRegisterDrafts()
         )
     }
@@ -645,6 +694,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             modelId = modelId,
             slaveIdInput = slaveId.toString(),
             functionCode = functionCode,
+            baudRate = baudRate,
+            parity = SerialParity.fromProfileValue(parity),
+            stopBits = stopBits,
             registers = points.map { point ->
                 MeterRegisterDraft(
                     name = point.name,
@@ -791,6 +843,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private companion object {
         const val USB_REQUEST_FRAME_SIZE = 8
+        val SUPPORTED_BAUD_RATES = listOf(1200, 2400, 4800, 9600, 19200, 115200)
+    }
+
+    private fun parityLabel(value: Int): String {
+        return SerialParity.fromProfileValue(value).label
     }
 }
 
@@ -801,6 +858,9 @@ data class MainUiState(
     val userProfiles: List<MeterProfile>,
     val slaveId: Int,
     val slaveIdInput: String,
+    val profileBaudRate: Int,
+    val profileParity: SerialParity,
+    val profileStopBits: Int,
     val usbDevices: List<UsbDeviceSummary>,
     val usbSerialDevices: List<UsbSerialDeviceSummary>,
     val usbConnectionStatus: String,
@@ -824,6 +884,9 @@ data class MeterEditorDraft(
     val modelId: String,
     val slaveIdInput: String,
     val functionCode: Int,
+    val baudRate: Int,
+    val parity: SerialParity,
+    val stopBits: Int,
     val registers: List<MeterRegisterDraft>
 )
 
