@@ -192,6 +192,42 @@ fun SettingsScreen(
                     ) {
                         Text("Refresh USB Devices")
                     }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = if (uiState.usbSerialDevices.isEmpty()) {
+                            "No supported USB serial adapters detected yet. SH-U11C should appear here as an FTDI serial device when connected."
+                        } else {
+                            "USB serial adapters: ${uiState.usbSerialDevices.size}"
+                        },
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    if (uiState.usbSerialDevices.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        uiState.usbSerialDevices.forEach { device ->
+                            Card(modifier = Modifier.fillMaxWidth()) {
+                                Column(modifier = Modifier.padding(12.dp)) {
+                                    Text(
+                                        text = device.displayLabel,
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = "VID:PID ${device.vendorId.toString(16).padStart(4, '0').uppercase()}:${device.productId.toString(16).padStart(4, '0').uppercase()} / permission=${device.hasPermission}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = device.deviceName,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                        }
+                    }
                     if (uiState.usbDevices.isNotEmpty()) {
                         Spacer(modifier = Modifier.height(12.dp))
                         uiState.usbDevices.forEach { device ->

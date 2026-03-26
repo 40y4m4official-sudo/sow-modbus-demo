@@ -19,6 +19,8 @@ import com.example.meterdemo.persistence.MeterPersistence
 import com.example.meterdemo.persistence.PersistedMeterState
 import com.example.meterdemo.usb.UsbDeviceScanner
 import com.example.meterdemo.usb.UsbDeviceSummary
+import com.example.meterdemo.usb.UsbSerialDeviceSummary
+import com.example.meterdemo.usb.UsbSerialScanner
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -34,6 +36,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val logger = CommLogger()
     private val persistence = MeterPersistence(application)
     private val usbDeviceScanner = UsbDeviceScanner(application)
+    private val usbSerialScanner = UsbSerialScanner(application)
 
     private val _uiState: MutableStateFlow<MainUiState>
     val uiState: StateFlow<MainUiState>
@@ -131,10 +134,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun refreshUsbDevices() {
         val devices = usbDeviceScanner.scan()
+        val serialDevices = usbSerialScanner.scan()
         logger.info("Detected ${devices.size} USB device(s)")
         refreshUiState(
             selectedPointIndex = _uiState.value.selectedPointIndex,
-            usbDevices = devices
+            usbDevices = devices,
+            usbSerialDevices = serialDevices
         )
     }
 
@@ -472,6 +477,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         rawValueInput: String? = null,
         slaveIdInput: String? = null,
         usbDevices: List<UsbDeviceSummary> = _uiState.value.usbDevices,
+        usbSerialDevices: List<UsbSerialDeviceSummary> = _uiState.value.usbSerialDevices,
         editingExistingUserMeter: Boolean = _uiState.value.editingExistingUserMeter,
         draftReadOnly: Boolean = _uiState.value.draftReadOnly,
         selectedEditableUserModelId: String? = _uiState.value.selectedEditableUserModelId,
@@ -495,6 +501,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             slaveId = repository.getSlaveId(),
             slaveIdInput = slaveIdInput ?: repository.getSlaveId().toString(),
             usbDevices = usbDevices,
+            usbSerialDevices = usbSerialDevices,
             points = snapshots,
             selectedPointIndex = safeIndex,
             selectedPoint = selectedPoint,
@@ -518,6 +525,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             slaveId = repository.getSlaveId(),
             slaveIdInput = repository.getSlaveId().toString(),
             usbDevices = usbDeviceScanner.scan(),
+            usbSerialDevices = usbSerialScanner.scan(),
             points = snapshots,
             selectedPointIndex = 0,
             selectedPoint = selectedPoint,
@@ -683,6 +691,7 @@ data class MainUiState(
     val slaveId: Int,
     val slaveIdInput: String,
     val usbDevices: List<UsbDeviceSummary>,
+    val usbSerialDevices: List<UsbSerialDeviceSummary>,
     val points: List<MeterValueSnapshot>,
     val selectedPointIndex: Int,
     val selectedPoint: MeterValueSnapshot?,
