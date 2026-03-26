@@ -28,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.example.meterdemo.meter.model.DataType
+import com.example.meterdemo.meter.model.SerialParity
 import com.example.meterdemo.viewmodel.MainUiState
 
 @Composable
@@ -38,6 +39,9 @@ fun AddMeterScreen(
     onModelIdChange: (String) -> Unit,
     onSlaveIdChange: (String) -> Unit,
     onFunctionCodeChange: (Int) -> Unit,
+    onBaudRateChange: (Int) -> Unit,
+    onParityChange: (SerialParity) -> Unit,
+    onStopBitsChange: (Int) -> Unit,
     onRegisterNameChange: (Int, String) -> Unit,
     onRegisterAddressChange: (Int, String) -> Unit,
     onRegisterCountChange: (Int, String) -> Unit,
@@ -99,7 +103,7 @@ fun AddMeterScreen(
                 text = if (isReadOnly) {
                     "Preset register settings are shown below. To change the active Slave ID, use the Settings screen."
                 } else {
-                    "The standard 22 signal templates are preloaded. Leave address blank for signals you do not use."
+                    "The standard 22 signal templates are preloaded. Leave address blank for signals you do not use. Serial settings are saved into each meter profile."
                 },
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -147,10 +151,39 @@ fun AddMeterScreen(
                         },
                         modifier = Modifier.fillMaxWidth(),
                         enabled = !isReadOnly
+                        ) {
+                            Text(
+                                text = "Read Function: ${if (draft.functionCode == 0x03) "03H Holding Registers" else "04H Input Registers"}"
+                            )
+                        }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Row(modifier = Modifier.fillMaxWidth()) {
+                        OutlinedButton(
+                            onClick = {
+                                val nextBaudRate = nextBaudRate(draft.baudRate)
+                                onBaudRateChange(nextBaudRate)
+                            },
+                            modifier = Modifier.weight(1f),
+                            enabled = !isReadOnly
+                        ) {
+                            Text("Baud: ${draft.baudRate}")
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        OutlinedButton(
+                            onClick = { onParityChange(draft.parity.next()) },
+                            modifier = Modifier.weight(1f),
+                            enabled = !isReadOnly
+                        ) {
+                            Text("Parity: ${draft.parity.label}")
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    OutlinedButton(
+                        onClick = { onStopBitsChange(if (draft.stopBits == 1) 2 else 1) },
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !isReadOnly
                     ) {
-                        Text(
-                            text = "Read Function: ${if (draft.functionCode == 0x03) "03H Holding Registers" else "04H Input Registers"}"
-                        )
+                        Text("Stop Bit: ${draft.stopBits}")
                     }
                 }
             }
@@ -310,4 +343,10 @@ fun AddMeterScreen(
             }
         }
     }
+}
+
+private fun nextBaudRate(current: Int): Int {
+    val baudRates = listOf(1200, 2400, 4800, 9600, 19200, 115200)
+    val currentIndex = baudRates.indexOf(current).takeIf { it >= 0 } ?: 0
+    return baudRates[(currentIndex + 1) % baudRates.size]
 }

@@ -46,6 +46,10 @@ fun SettingsScreen(
     onApplySlaveId: () -> Unit,
     onOpenLogs: () -> Unit,
     onRefreshLogs: () -> Unit,
+    onRefreshUsbDevices: () -> Unit,
+    onRequestUsbPermission: (String) -> Unit,
+    onConnectUsbDevice: (String) -> Unit,
+    onDisconnectUsbDevice: () -> Unit,
     onSimulateRead: () -> Unit,
     onSimulateCustomRequest: (String) -> Unit
 ) {
@@ -163,6 +167,139 @@ fun SettingsScreen(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text("Apply Slave Address")
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "USB-RS485",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = if (uiState.usbDevices.isEmpty()) {
+                            "No USB devices detected yet."
+                        } else {
+                            "Detected devices: ${uiState.usbDevices.size}"
+                        },
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Profile serial: ${uiState.profileBaudRate} 8${uiState.profileParity.label.first()}${uiState.profileStopBits}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Connection: ${uiState.usbConnectionStatus}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    uiState.connectedUsbDeviceName?.let { deviceName ->
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Connected device: $deviceName",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    OutlinedButton(
+                        onClick = onRefreshUsbDevices,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Refresh USB Devices")
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = if (uiState.usbSerialDevices.isEmpty()) {
+                            "No supported USB serial adapters detected yet. SH-U11C should appear here as an FTDI serial device when connected."
+                        } else {
+                            "USB serial adapters: ${uiState.usbSerialDevices.size}"
+                        },
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    if (uiState.usbSerialDevices.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        uiState.usbSerialDevices.forEach { device ->
+                            val isConnected = uiState.connectedUsbDeviceName == device.deviceName
+                            Card(modifier = Modifier.fillMaxWidth()) {
+                                Column(modifier = Modifier.padding(12.dp)) {
+                                    Text(
+                                        text = device.displayLabel,
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = "VID:PID ${device.vendorId.toString(16).padStart(4, '0').uppercase()}:${device.productId.toString(16).padStart(4, '0').uppercase()} / permission=${device.hasPermission}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = device.deviceName,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                    ) {
+                                        OutlinedButton(
+                                            onClick = { onRequestUsbPermission(device.deviceName) },
+                                            modifier = Modifier.weight(1f)
+                                        ) {
+                                            Text("Permission")
+                                        }
+                                        if (isConnected) {
+                                            Button(
+                                                onClick = onDisconnectUsbDevice,
+                                                modifier = Modifier.weight(1f)
+                                            ) {
+                                                Text("Disconnect")
+                                            }
+                                        } else {
+                                            Button(
+                                                onClick = { onConnectUsbDevice(device.deviceName) },
+                                                modifier = Modifier.weight(1f),
+                                                enabled = device.hasPermission
+                                            ) {
+                                                Text("Connect")
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                        }
+                    }
+                    if (uiState.usbDevices.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        uiState.usbDevices.forEach { device ->
+                            Card(modifier = Modifier.fillMaxWidth()) {
+                                Column(modifier = Modifier.padding(12.dp)) {
+                                    Text(
+                                        text = device.displayLabel,
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = device.deviceName,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                        }
                     }
                 }
             }

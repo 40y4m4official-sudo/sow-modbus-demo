@@ -7,6 +7,7 @@ import com.example.meterdemo.logging.CommLogger
 import com.example.meterdemo.meter.model.DataType
 import com.example.meterdemo.meter.model.MeterPoint
 import com.example.meterdemo.meter.model.MeterProfile
+import com.example.meterdemo.meter.model.SerialParity
 import com.example.meterdemo.meter.model.StandardSignalTemplates
 import com.example.meterdemo.meter.model.WordByteOrder
 import com.example.meterdemo.meter.profiles.MeterProfiles
@@ -17,11 +18,15 @@ import com.example.meterdemo.modbus.ModbusFrameParser
 import com.example.meterdemo.modbus.ModbusRtuSlaveEngine
 import com.example.meterdemo.persistence.MeterPersistence
 import com.example.meterdemo.persistence.PersistedMeterState
+import com.example.meterdemo.usb.UsbDeviceScanner
+import com.example.meterdemo.usb.UsbDeviceSummary
+import com.example.meterdemo.usb.UsbSerialConnectionManager
+import com.example.meterdemo.usb.UsbSerialDeviceSummary
+import com.example.meterdemo.usb.UsbSerialScanner
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlin.math.roundToInt
-import kotlin.math.roundToLong
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -31,6 +36,61 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val engine = ModbusRtuSlaveEngine(repository)
     private val logger = CommLogger()
     private val persistence = MeterPersistence(application)
+    private val usbDeviceScanner = UsbDeviceScanner(application)
+    private val usbSerialScanner = UsbSerialScanner(application)
+    private val usbReceiveBuffer = mutableListOf<Byte>()
+    private val usbSerialConnectionManager = UsbSerialConnectionManager(
+        context = application,
+        listener = object : UsbSerialConnectionManager.Listener {
+            override fun onPermissionResult(deviceName: String, granted: Boolean) {
+                if (granted) {
+                    logger.info("USB permission granted: $deviceName")
+                } else {
+                    logger.error("USB permission denied: $deviceName")
+                }
+                refreshUsbDevices()
+            }
+
+            override fun onConnected(deviceName: String) {
+                val profile = repository.getProfile()
+                logger.info(
+                    "USB serial connected: $deviceName (${profile.baudRate} 8${parityLabel(profile.parity).first()}${profile.stopBits})"
+                )
+                refreshUiState(
+                    selectedPointIndex = _uiState.value.selectedPointIndex,
+                    usbConnectionStatus = "Connected",
+                    connectedUsbDeviceName = deviceName
+                )
+                refreshUsbDevices()
+            }
+
+            override fun onDisconnected(deviceName: String?, reason: String) {
+                if (deviceName != null) {
+                    logger.info("USB serial disconnected: $deviceName ($reason)")
+                }
+                usbReceiveBuffer.clear()
+                refreshUiState(
+                    selectedPointIndex = _uiState.value.selectedPointIndex,
+                    usbConnectionStatus = reason,
+                    connectedUsbDeviceName = null
+                )
+                refreshUsbDevices()
+            }
+
+            override fun onDataReceived(data: ByteArray) {
+                logger.rx(ModbusFrameParser.toHexString(data), "USB RX")
+                appendUsbData(data)
+            }
+
+            override fun onError(message: String) {
+                logger.error(message)
+                refreshUiState(
+                    selectedPointIndex = _uiState.value.selectedPointIndex,
+                    usbConnectionStatus = "Error"
+                )
+            }
+        }
+    )
 
     private val _uiState: MutableStateFlow<MainUiState>
     val uiState: StateFlow<MainUiState>
@@ -124,6 +184,51 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun refreshLogs() {
         logger.info("Refreshed logs")
         refreshUiState(selectedPointIndex = _uiState.value.selectedPointIndex)
+    }
+
+    fun refreshUsbDevices() {
+        val devices = usbDeviceScanner.scan()
+        val serialDevices = usbSerialScanner.scan()
+        logger.info("Detected ${devices.size} USB device(s)")
+        refreshUiState(
+            selectedPointIndex = _uiState.value.selectedPointIndex,
+            usbDevices = devices,
+            usbSerialDevices = serialDevices
+        )
+    }
+
+    fun requestUsbSerialPermission(deviceName: String) {
+        if (!usbSerialConnectionManager.requestPermission(deviceName)) {
+            logger.error("Failed to request USB permission: $deviceName")
+        } else {
+            logger.info("Requested USB permission: $deviceName")
+        }
+    }
+
+    fun connectUsbSerial(deviceName: String) {
+        val profile = repository.getProfile()
+        refreshUiState(
+            selectedPointIndex = _uiState.value.selectedPointIndex,
+            usbConnectionStatus = "Connecting...",
+            connectedUsbDeviceName = _uiState.value.connectedUsbDeviceName
+        )
+        if (!usbSerialConnectionManager.connect(
+                deviceName = deviceName,
+                baudRate = profile.baudRate,
+                parity = profile.parity,
+                stopBits = if (profile.stopBits == 2) 2 else 1
+            )
+        ) {
+            refreshUiState(
+                selectedPointIndex = _uiState.value.selectedPointIndex,
+                usbConnectionStatus = "Connect failed",
+                connectedUsbDeviceName = null
+            )
+        }
+    }
+
+    fun disconnectUsbSerial() {
+        usbSerialConnectionManager.disconnect()
     }
 
     fun clearLogs() {
@@ -243,6 +348,27 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun updateEditDraftFunctionCode(value: Int) {
         refreshUiState(
             editMeterDraft = _uiState.value.editMeterDraft.copy(functionCode = value),
+            draftErrorMessage = null
+        )
+    }
+
+    fun updateEditDraftBaudRate(value: Int) {
+        refreshUiState(
+            editMeterDraft = _uiState.value.editMeterDraft.copy(baudRate = value),
+            draftErrorMessage = null
+        )
+    }
+
+    fun updateEditDraftParity(value: SerialParity) {
+        refreshUiState(
+            editMeterDraft = _uiState.value.editMeterDraft.copy(parity = value),
+            draftErrorMessage = null
+        )
+    }
+
+    fun updateEditDraftStopBits(value: Int) {
+        refreshUiState(
+            editMeterDraft = _uiState.value.editMeterDraft.copy(stopBits = value),
             draftErrorMessage = null
         )
     }
@@ -382,6 +508,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             reportDraftError("Read function must be 03H or 04H")
             return null
         }
+        if (draft.baudRate !in SUPPORTED_BAUD_RATES) {
+            reportDraftError("Baud rate must be one of ${SUPPORTED_BAUD_RATES.joinToString()}")
+            return null
+        }
+        if (draft.stopBits !in setOf(1, 2)) {
+            reportDraftError("Stop bits must be 1 or 2")
+            return null
+        }
 
         val points = draft.registers.mapIndexed { index, register ->
             val trimmedAddress = register.addressInput.trim()
@@ -446,10 +580,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             modelId = modelId,
             displayName = displayName,
             slaveId = slaveId,
-            baudRate = 19200,
+            baudRate = draft.baudRate,
             dataBits = 8,
-            parity = 2,
-            stopBits = 1,
+            parity = draft.parity.profileValue,
+            stopBits = draft.stopBits,
             functionCode = draft.functionCode,
             points = points
         )
@@ -459,6 +593,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         selectedPointIndex: Int = _uiState.value.selectedPointIndex,
         rawValueInput: String? = null,
         slaveIdInput: String? = null,
+        usbDevices: List<UsbDeviceSummary> = _uiState.value.usbDevices,
+        usbSerialDevices: List<UsbSerialDeviceSummary> = _uiState.value.usbSerialDevices,
+        usbConnectionStatus: String = _uiState.value.usbConnectionStatus,
+        connectedUsbDeviceName: String? = _uiState.value.connectedUsbDeviceName,
         editingExistingUserMeter: Boolean = _uiState.value.editingExistingUserMeter,
         draftReadOnly: Boolean = _uiState.value.draftReadOnly,
         selectedEditableUserModelId: String? = _uiState.value.selectedEditableUserModelId,
@@ -481,6 +619,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             userProfiles = userProfiles.toList(),
             slaveId = repository.getSlaveId(),
             slaveIdInput = slaveIdInput ?: repository.getSlaveId().toString(),
+            profileBaudRate = repository.getProfile().baudRate,
+            profileParity = SerialParity.fromProfileValue(repository.getProfile().parity),
+            profileStopBits = repository.getProfile().stopBits,
+            usbDevices = usbDevices,
+            usbSerialDevices = usbSerialDevices,
+            usbConnectionStatus = usbConnectionStatus,
+            connectedUsbDeviceName = connectedUsbDeviceName,
             points = snapshots,
             selectedPointIndex = safeIndex,
             selectedPoint = selectedPoint,
@@ -503,6 +648,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             userProfiles = userProfiles.toList(),
             slaveId = repository.getSlaveId(),
             slaveIdInput = repository.getSlaveId().toString(),
+            profileBaudRate = repository.getProfile().baudRate,
+            profileParity = SerialParity.fromProfileValue(repository.getProfile().parity),
+            profileStopBits = repository.getProfile().stopBits,
+            usbDevices = usbDeviceScanner.scan(),
+            usbSerialDevices = usbSerialScanner.scan(),
+            usbConnectionStatus = "Disconnected",
+            connectedUsbDeviceName = null,
             points = snapshots,
             selectedPointIndex = 0,
             selectedPoint = selectedPoint,
@@ -529,6 +681,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             modelId = modelId,
             slaveIdInput = slaveId.toString(),
             functionCode = 0x03,
+            baudRate = 19200,
+            parity = SerialParity.EVEN,
+            stopBits = 1,
             registers = standardRegisterDrafts()
         )
     }
@@ -539,6 +694,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             modelId = modelId,
             slaveIdInput = slaveId.toString(),
             functionCode = functionCode,
+            baudRate = baudRate,
+            parity = SerialParity.fromProfileValue(parity),
+            stopBits = stopBits,
             registers = points.map { point ->
                 MeterRegisterDraft(
                     name = point.name,
@@ -658,6 +816,39 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             null
         }
     }
+
+    private fun appendUsbData(data: ByteArray) {
+        usbReceiveBuffer.addAll(data.toList())
+
+        while (usbReceiveBuffer.size >= USB_REQUEST_FRAME_SIZE) {
+            val frame = usbReceiveBuffer.take(USB_REQUEST_FRAME_SIZE).toByteArray()
+            usbReceiveBuffer.subList(0, USB_REQUEST_FRAME_SIZE).clear()
+
+            val response = engine.handleRequest(frame)
+            if (response == null) {
+                logger.error("USB request was not handled")
+                continue
+            }
+
+            if (usbSerialConnectionManager.write(response)) {
+                logger.tx(ModbusFrameParser.toHexString(response), "USB TX")
+            }
+        }
+    }
+
+    override fun onCleared() {
+        usbSerialConnectionManager.release()
+        super.onCleared()
+    }
+
+    private companion object {
+        const val USB_REQUEST_FRAME_SIZE = 8
+        val SUPPORTED_BAUD_RATES = listOf(1200, 2400, 4800, 9600, 19200, 115200)
+    }
+
+    private fun parityLabel(value: Int): String {
+        return SerialParity.fromProfileValue(value).label
+    }
 }
 
 data class MainUiState(
@@ -667,6 +858,13 @@ data class MainUiState(
     val userProfiles: List<MeterProfile>,
     val slaveId: Int,
     val slaveIdInput: String,
+    val profileBaudRate: Int,
+    val profileParity: SerialParity,
+    val profileStopBits: Int,
+    val usbDevices: List<UsbDeviceSummary>,
+    val usbSerialDevices: List<UsbSerialDeviceSummary>,
+    val usbConnectionStatus: String,
+    val connectedUsbDeviceName: String?,
     val points: List<MeterValueSnapshot>,
     val selectedPointIndex: Int,
     val selectedPoint: MeterValueSnapshot?,
@@ -686,6 +884,9 @@ data class MeterEditorDraft(
     val modelId: String,
     val slaveIdInput: String,
     val functionCode: Int,
+    val baudRate: Int,
+    val parity: SerialParity,
+    val stopBits: Int,
     val registers: List<MeterRegisterDraft>
 )
 

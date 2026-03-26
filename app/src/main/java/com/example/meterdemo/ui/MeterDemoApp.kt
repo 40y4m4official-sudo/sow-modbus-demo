@@ -44,6 +44,10 @@ fun MeterDemoApp(viewModel: MainViewModel) {
             onApplySlaveId = viewModel::applySlaveId,
             onOpenLogs = { currentScreen = Screen.Logs },
             onRefreshLogs = viewModel::refreshLogs,
+            onRefreshUsbDevices = viewModel::refreshUsbDevices,
+            onRequestUsbPermission = viewModel::requestUsbSerialPermission,
+            onConnectUsbDevice = viewModel::connectUsbSerial,
+            onDisconnectUsbDevice = viewModel::disconnectUsbSerial,
             onSimulateRead = viewModel::simulateReadOfSelectedPoint,
             onSimulateCustomRequest = viewModel::simulateCustomRequest
         )
@@ -79,6 +83,9 @@ fun MeterDemoApp(viewModel: MainViewModel) {
             onModelIdChange = viewModel::updateEditDraftModelId,
             onSlaveIdChange = viewModel::updateEditDraftSlaveId,
             onFunctionCodeChange = viewModel::updateEditDraftFunctionCode,
+            onBaudRateChange = viewModel::updateEditDraftBaudRate,
+            onParityChange = viewModel::updateEditDraftParity,
+            onStopBitsChange = viewModel::updateEditDraftStopBits,
             onRegisterNameChange = { index, value ->
                 viewModel.updateEditDraftRegister(index) { copy(name = value) }
             },
