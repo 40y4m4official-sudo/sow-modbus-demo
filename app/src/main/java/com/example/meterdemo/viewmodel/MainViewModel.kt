@@ -159,6 +159,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun startNewUserMeter() {
         refreshUiState(
             editingExistingUserMeter = false,
+            draftReadOnly = false,
             selectedEditableUserModelId = null,
             draftErrorMessage = null,
             editMeterDraft = defaultMeterDraft(
@@ -178,7 +179,24 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
         refreshUiState(
             editingExistingUserMeter = true,
+            draftReadOnly = false,
             selectedEditableUserModelId = modelId,
+            draftErrorMessage = null,
+            editMeterDraft = profile.toDraft()
+        )
+    }
+
+    fun startViewingBuiltinMeter(modelId: String) {
+        val profile = builtinProfiles.firstOrNull { it.modelId == modelId }
+        if (profile == null) {
+            logger.error("Preset not found: $modelId")
+            return
+        }
+
+        refreshUiState(
+            editingExistingUserMeter = false,
+            draftReadOnly = true,
+            selectedEditableUserModelId = null,
             draftErrorMessage = null,
             editMeterDraft = profile.toDraft()
         )
@@ -438,6 +456,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         rawValueInput: String? = null,
         slaveIdInput: String? = null,
         editingExistingUserMeter: Boolean = _uiState.value.editingExistingUserMeter,
+        draftReadOnly: Boolean = _uiState.value.draftReadOnly,
         selectedEditableUserModelId: String? = _uiState.value.selectedEditableUserModelId,
         draftErrorMessage: String? = _uiState.value.draftErrorMessage,
         editMeterDraft: MeterEditorDraft = _uiState.value.editMeterDraft
@@ -463,6 +482,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             selectedPoint = selectedPoint,
             rawValueInput = rawValueInput ?: selectedPoint?.let { formatRawValueInput(it) }.orEmpty(),
             editingExistingUserMeter = editingExistingUserMeter,
+            draftReadOnly = draftReadOnly,
             selectedEditableUserModelId = selectedEditableUserModelId,
             draftErrorMessage = draftErrorMessage,
             editMeterDraft = editMeterDraft
@@ -484,6 +504,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             selectedPoint = selectedPoint,
             rawValueInput = selectedPoint?.let { formatRawValueInput(it) }.orEmpty(),
             editingExistingUserMeter = false,
+            draftReadOnly = false,
             selectedEditableUserModelId = null,
             draftErrorMessage = null,
             editMeterDraft = defaultMeterDraft(
@@ -657,6 +678,7 @@ data class MainUiState(
     val selectedPoint: MeterValueSnapshot?,
     val rawValueInput: String,
     val editingExistingUserMeter: Boolean,
+    val draftReadOnly: Boolean,
     val selectedEditableUserModelId: String?,
     val draftErrorMessage: String?,
     val editMeterDraft: MeterEditorDraft

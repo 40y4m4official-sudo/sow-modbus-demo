@@ -65,6 +65,10 @@ fun MeterDemoApp(viewModel: MainViewModel) {
                 viewModel.startEditingUserMeter(modelId)
                 currentScreen = Screen.AddMeter
             },
+            onViewPreset = { modelId ->
+                viewModel.startViewingBuiltinMeter(modelId)
+                currentScreen = Screen.AddMeter
+            },
             onDeleteMeters = viewModel::deleteUserMeters
         )
 

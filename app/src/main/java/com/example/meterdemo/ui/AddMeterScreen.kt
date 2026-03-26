@@ -53,6 +53,7 @@ fun AddMeterScreen(
     val draft = uiState.editMeterDraft
     var showOverwriteDialog by remember { mutableStateOf(false) }
     val isEditing = uiState.editingExistingUserMeter
+    val isReadOnly = uiState.draftReadOnly
 
     if (showOverwriteDialog) {
         AlertDialog(
@@ -82,7 +83,7 @@ fun AddMeterScreen(
             .padding(20.dp)
     ) {
         ScreenHeader(
-            title = if (isEditing) "Register Settings" else "Add Meter",
+            title = if (isReadOnly) "Preset Registers" else if (isEditing) "Register Settings" else "Add Meter",
             trailingText = "Back",
             onTrailingClick = onBack
         )
@@ -95,7 +96,11 @@ fun AddMeterScreen(
                 .verticalScroll(rememberScrollState())
         ) {
             Text(
-                text = "The standard 22 signal templates are preloaded. Leave address blank for signals you do not use.",
+                text = if (isReadOnly) {
+                    "Preset register settings are shown below. To change the active Slave ID, use the Settings screen."
+                } else {
+                    "The standard 22 signal templates are preloaded. Leave address blank for signals you do not use."
+                },
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -113,14 +118,16 @@ fun AddMeterScreen(
                         value = draft.displayName,
                         onValueChange = onProfileNameChange,
                         label = { Text("Display Name") },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !isReadOnly
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     OutlinedTextField(
                         value = draft.modelId,
                         onValueChange = onModelIdChange,
                         label = { Text("Model ID") },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !isReadOnly
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     OutlinedTextField(
@@ -128,7 +135,8 @@ fun AddMeterScreen(
                         onValueChange = onSlaveIdChange,
                         label = { Text("Default Slave ID") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !isReadOnly
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     OutlinedButton(
@@ -137,7 +145,8 @@ fun AddMeterScreen(
                                 if (draft.functionCode == 0x03) 0x04 else 0x03
                             )
                         },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !isReadOnly
                     ) {
                         Text(
                             text = "Read Function: ${if (draft.functionCode == 0x03) "03H Holding Registers" else "04H Input Registers"}"
@@ -160,7 +169,8 @@ fun AddMeterScreen(
                             value = register.name,
                             onValueChange = { onRegisterNameChange(index, it) },
                             label = { Text("Name") },
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth(),
+                            enabled = !isReadOnly
                         )
 
                         Spacer(modifier = Modifier.height(12.dp))
@@ -170,7 +180,8 @@ fun AddMeterScreen(
                                 onValueChange = { onRegisterAddressChange(index, it) },
                                 label = { Text("Address") },
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                modifier = Modifier.weight(1f)
+                                modifier = Modifier.weight(1f),
+                                enabled = !isReadOnly
                             )
                             Spacer(modifier = Modifier.width(12.dp))
                             OutlinedTextField(
@@ -178,7 +189,8 @@ fun AddMeterScreen(
                                 onValueChange = { onRegisterCountChange(index, it) },
                                 label = { Text("Words") },
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                modifier = Modifier.weight(1f)
+                                modifier = Modifier.weight(1f),
+                                enabled = !isReadOnly
                             )
                             Spacer(modifier = Modifier.width(12.dp))
                             OutlinedTextField(
@@ -186,7 +198,8 @@ fun AddMeterScreen(
                                 onValueChange = { onRegisterGainChange(index, it) },
                                 label = { Text("Gain") },
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                                modifier = Modifier.weight(1f)
+                                modifier = Modifier.weight(1f),
+                                enabled = !isReadOnly
                             )
                         }
 
@@ -197,7 +210,8 @@ fun AddMeterScreen(
                                 value = register.unit,
                                 onValueChange = { onRegisterUnitChange(index, it) },
                                 label = { Text("Unit") },
-                                modifier = Modifier.weight(1f)
+                                modifier = Modifier.weight(1f),
+                                enabled = !isReadOnly
                             )
                             Spacer(modifier = Modifier.width(12.dp))
                             OutlinedTextField(
@@ -219,7 +233,8 @@ fun AddMeterScreen(
                                         KeyboardType.Number
                                     }
                                 ),
-                                modifier = Modifier.weight(1f)
+                                modifier = Modifier.weight(1f),
+                                enabled = !isReadOnly
                             )
                         }
 
@@ -228,14 +243,16 @@ fun AddMeterScreen(
                         Row(modifier = Modifier.fillMaxWidth()) {
                             OutlinedButton(
                                 onClick = { onRegisterDataTypeChange(index) },
-                                modifier = Modifier.weight(1f)
+                                modifier = Modifier.weight(1f),
+                                enabled = !isReadOnly
                             ) {
                                 Text("Type: ${register.dataType.name}")
                             }
                             Spacer(modifier = Modifier.width(12.dp))
                             OutlinedButton(
                                 onClick = { onRegisterWordByteOrderChange(index) },
-                                modifier = Modifier.weight(1f)
+                                modifier = Modifier.weight(1f),
+                                enabled = !isReadOnly
                             ) {
                                 Text("Order: ${register.wordByteOrder.label}")
                             }
@@ -253,38 +270,44 @@ fun AddMeterScreen(
                 Spacer(modifier = Modifier.height(12.dp))
             }
 
-            OutlinedButton(
-                onClick = onAddRegister,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Add Register")
+            if (!isReadOnly) {
+                OutlinedButton(
+                    onClick = onAddRegister,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Add Register")
+                }
             }
         }
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        uiState.draftErrorMessage?.let { message ->
-            Text(
-                text = message,
-                color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.bodyMedium
-            )
-            Spacer(modifier = Modifier.height(12.dp))
+        if (!isReadOnly) {
+            uiState.draftErrorMessage?.let { message ->
+                Text(
+                    text = message,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+            }
         }
 
-        Button(
-            onClick = {
-                if (isEditing) {
-                    if (onValidateBeforeOverwrite()) {
-                        showOverwriteDialog = true
+        if (!isReadOnly) {
+            Button(
+                onClick = {
+                    if (isEditing) {
+                        if (onValidateBeforeOverwrite()) {
+                            showOverwriteDialog = true
+                        }
+                    } else {
+                        onApply()
                     }
-                } else {
-                    onApply()
-                }
-            },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Apply")
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Apply")
+            }
         }
     }
 }
