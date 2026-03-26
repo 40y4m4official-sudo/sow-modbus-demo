@@ -285,7 +285,7 @@ class ModbusRtuSlaveEngineTest {
                     address = 100,
                     registerCount = 1,
                     gain = 1.0,
-                    dataType = DataType.UINT16,
+                    dataType = DataType.INT,
                     unit = "kWh",
                     initialRawValue = 0x1234
                 )
@@ -335,7 +335,7 @@ class ModbusRtuSlaveEngineTest {
                     address = 200,
                     registerCount = 2,
                     gain = 1.0,
-                    dataType = DataType.INT32,
+                    dataType = DataType.INT,
                     wordByteOrder = WordByteOrder.MSB_LSB,
                     unit = "W",
                     initialRawValue = 0x11223344
@@ -388,7 +388,7 @@ class ModbusRtuSlaveEngineTest {
                     address = 300,
                     registerCount = 3,
                     gain = 1.0,
-                    dataType = DataType.INT32,
+                    dataType = DataType.INT,
                     unit = "",
                     initialRawValue = -2
                 )
@@ -442,7 +442,7 @@ class ModbusRtuSlaveEngineTest {
                     address = 400,
                     registerCount = 4,
                     gain = 1.0,
-                    dataType = DataType.UINT32,
+                    dataType = DataType.INT,
                     wordByteOrder = WordByteOrder.LSB_MSB,
                     unit = "",
                     initialRawValue = 0x11223344

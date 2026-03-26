@@ -57,7 +57,7 @@ object Dtsu666HwProfile {
             address = address,
             registerCount = 2,
             gain = gain,
-            dataType = DataType.FLOAT32,
+            dataType = DataType.FLOAT,
             unit = unit,
             initialRawValue = rawValue.toRawBits()
         )

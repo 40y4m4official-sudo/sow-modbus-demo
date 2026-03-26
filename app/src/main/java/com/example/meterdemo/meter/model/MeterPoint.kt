@@ -12,20 +12,15 @@ data class MeterPoint(
 ) {
     fun decodedValue(rawValue: Int): Double {
         return when (dataType) {
-            DataType.INT16 -> rawValue.toShort().toDouble()
-            DataType.UINT16 -> (rawValue and 0xFFFF).toDouble()
-            DataType.INT32 -> rawValue.toDouble()
-            DataType.UINT32 -> (rawValue.toLong() and 0xFFFFFFFFL).toDouble()
-            DataType.FLOAT32 -> Float.fromBits(rawValue).toDouble()
+            DataType.FLOAT -> Float.fromBits(rawValue).toDouble()
+            DataType.INT -> if (registerCount == 1) rawValue.toShort().toDouble() else rawValue.toDouble()
         }
     }
 
     fun rawInputValue(rawValue: Int): String {
         return when (dataType) {
-            DataType.FLOAT32 -> Float.fromBits(rawValue).toString()
-            DataType.UINT32 -> (rawValue.toLong() and 0xFFFFFFFFL).toString()
-            DataType.UINT16 -> (rawValue and 0xFFFF).toString()
-            else -> rawValue.toString()
+            DataType.FLOAT -> Float.fromBits(rawValue).toString()
+            DataType.INT -> if (registerCount == 1) rawValue.toShort().toString() else rawValue.toString()
         }
     }
 

@@ -94,7 +94,7 @@ class MeterRepositoryTest {
                         address = 1000,
                         registerCount = 2,
                         gain = 1.0,
-                        dataType = DataType.FLOAT32,
+                        dataType = DataType.FLOAT,
                         unit = "",
                         initialRawValue = 1.25f.toRawBits()
                     )

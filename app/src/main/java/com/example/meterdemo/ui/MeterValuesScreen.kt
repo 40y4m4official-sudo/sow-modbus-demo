@@ -158,17 +158,9 @@ fun MeterValuesScreen(
                 OutlinedTextField(
                     value = uiState.rawValueInput,
                     onValueChange = onRawValueChange,
-                    label = {
-                        Text(
-                            if (selectedPoint?.dataType == DataType.FLOAT32) {
-                                "Measured Value"
-                            } else {
-                                "Measured Value"
-                            }
-                        )
-                    },
+                    label = { Text("Measured Value") },
                     keyboardOptions = KeyboardOptions(
-                        keyboardType = if (selectedPoint?.dataType == DataType.FLOAT32) {
+                        keyboardType = if (selectedPoint?.dataType == DataType.FLOAT) {
                             KeyboardType.Decimal
                         } else {
                             KeyboardType.Number

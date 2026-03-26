@@ -1,5 +1,6 @@
 package com.example.meterdemo.modbus
 
+import com.example.meterdemo.meter.model.DataType
 import com.example.meterdemo.meter.model.MeterPoint
 import com.example.meterdemo.meter.model.WordByteOrder
 import com.example.meterdemo.meter.repository.MeterRepository
@@ -76,10 +77,8 @@ class ModbusRtuSlaveEngine(
         val registerCount = point.registerCount.coerceIn(1, 4)
         val totalBytes = registerCount * 2
         val extensionByte = when (point.dataType) {
-            com.example.meterdemo.meter.model.DataType.INT16,
-            com.example.meterdemo.meter.model.DataType.INT32 -> if (rawValue < 0) 0xFF.toByte() else 0x00
-
-            else -> 0x00
+            DataType.INT -> if (rawValue < 0) 0xFF.toByte() else 0x00
+            DataType.FLOAT -> 0x00
         }
 
         val naturalBytes = ByteArray(totalBytes) { extensionByte }

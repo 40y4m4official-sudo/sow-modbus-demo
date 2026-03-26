@@ -269,7 +269,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             gainInput = "1",
             unit = "",
             initialRawValueInput = "0",
-            dataType = DataType.INT16,
+            dataType = DataType.INT,
             wordByteOrder = WordByteOrder.MSB_MSB
         )
         refreshUiState(
@@ -416,8 +416,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 reportDraftError("Register ${index + 1} gain must be in range 0.0..1000000.0")
                 return null
             }
-            if (register.dataType == DataType.FLOAT32 && registerCount != 2) {
-                reportDraftError("Register ${index + 1} FLOAT32 requires word count 2")
+            if (register.dataType == DataType.FLOAT && registerCount != 2) {
+                reportDraftError("Register ${index + 1} FLOAT requires word count 2")
+                return null
+            }
+            if (register.dataType == DataType.INT && registerCount == 1 && initialRawValue !in Short.MIN_VALUE..Short.MAX_VALUE) {
+                reportDraftError("Register ${index + 1} INT with word count 1 must be in range -32768..32767")
                 return null
             }
 
@@ -561,7 +565,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 gainInput = "1",
                 unit = template.unit,
                 initialRawValueInput = "0",
-                dataType = DataType.INT16,
+                dataType = DataType.INT,
                 wordByteOrder = WordByteOrder.MSB_MSB
             )
         }
@@ -581,16 +585,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun parseRegisterInitialValue(register: MeterRegisterDraft): Int? {
         return when (register.dataType) {
-            DataType.FLOAT32 -> register.initialRawValueInput.toFloatOrNull()?.toRawBits()
-            DataType.UINT16 -> register.initialRawValueInput.toLongOrNull()
-                ?.takeIf { it in 0..0xFFFF }
-                ?.toInt()
-
-            DataType.UINT32 -> register.initialRawValueInput.toLongOrNull()
-                ?.takeIf { it in 0..0xFFFFFFFFL }
-                ?.toInt()
-
-            DataType.INT16, DataType.INT32 -> register.initialRawValueInput.toIntOrNull()
+            DataType.FLOAT -> register.initialRawValueInput.toFloatOrNull()?.toRawBits()
+            DataType.INT -> register.initialRawValueInput.toIntOrNull()
         }
     }
 
@@ -603,17 +599,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val scaledValue = if (point.gain <= 1.0) displayValue else displayValue * point.gain
 
         return when (point.dataType) {
-            DataType.FLOAT32 -> scaledValue.toFloat().toRawBits()
-            DataType.UINT16 -> scaledValue.roundToInt()
-                .takeIf { it in 0..0xFFFF }
-                ?.toInt()
-
-            DataType.UINT32 -> scaledValue.roundToLong()
-                .takeIf { it in 0..0xFFFFFFFFL }
-                ?.toInt()
-
-            DataType.INT16 -> scaledValue.roundToInt().takeIf { it in Short.MIN_VALUE..Short.MAX_VALUE }
-            DataType.INT32 -> scaledValue.roundToInt()
+            DataType.FLOAT -> scaledValue.toFloat().toRawBits()
+            DataType.INT -> {
+                val roundedValue = scaledValue.roundToInt()
+                if (point.registerCount == 1) {
+                    roundedValue.takeIf { it in Short.MIN_VALUE..Short.MAX_VALUE }
+                } else {
+                    roundedValue
+                }
+            }
         }
     }
 
@@ -702,6 +696,6 @@ data class MeterRegisterDraft(
     val gainInput: String,
     val unit: String,
     val initialRawValueInput: String,
-    val dataType: DataType = DataType.INT16,
+    val dataType: DataType = DataType.INT,
     val wordByteOrder: WordByteOrder = WordByteOrder.MSB_MSB
 )

@@ -219,7 +219,7 @@ fun AddMeterScreen(
                                 onValueChange = { onRegisterInitialValueChange(index, it) },
                                 label = {
                                     Text(
-                                        if (register.dataType == DataType.FLOAT32) {
+                                        if (register.dataType == DataType.FLOAT) {
                                             "Initial Float Value"
                                         } else {
                                             "Initial Raw Value"
@@ -227,7 +227,7 @@ fun AddMeterScreen(
                                     )
                                 },
                                 keyboardOptions = KeyboardOptions(
-                                    keyboardType = if (register.dataType == DataType.FLOAT32) {
+                                    keyboardType = if (register.dataType == DataType.FLOAT) {
                                         KeyboardType.Decimal
                                     } else {
                                         KeyboardType.Number

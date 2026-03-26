@@ -118,11 +118,8 @@ data class MeterValueSnapshot(
     val displayInputValue: String
         get() {
             val displayValue = when (dataType) {
-                DataType.INT16 -> rawValue.toShort().toDouble()
-                DataType.UINT16 -> (rawValue and 0xFFFF).toDouble()
-                DataType.INT32 -> rawValue.toDouble()
-                DataType.UINT32 -> (rawValue.toLong() and 0xFFFFFFFFL).toDouble()
-                DataType.FLOAT32 -> Float.fromBits(rawValue).toDouble()
+                DataType.FLOAT -> Float.fromBits(rawValue).toDouble()
+                DataType.INT -> if (registerCount == 1) rawValue.toShort().toDouble() else rawValue.toDouble()
             }.let { decoded ->
                 if (gain <= 1.0) decoded else decoded / gain
             }
