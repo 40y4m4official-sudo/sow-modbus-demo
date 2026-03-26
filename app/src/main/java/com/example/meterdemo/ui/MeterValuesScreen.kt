@@ -161,9 +161,9 @@ fun MeterValuesScreen(
                     label = {
                         Text(
                             if (selectedPoint?.dataType == DataType.FLOAT32) {
-                                "Float Value"
+                                "Measured Value"
                             } else {
-                                "Raw Value"
+                                "Measured Value"
                             }
                         )
                     },

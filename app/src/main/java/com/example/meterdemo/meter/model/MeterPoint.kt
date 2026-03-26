@@ -29,13 +29,26 @@ data class MeterPoint(
         }
     }
 
-    fun formattedValue(rawValue: Int): String {
+    fun displayValue(rawValue: Int): Double {
         val decoded = decodedValue(rawValue)
-        val displayValue = if (gain <= 1.0) decoded else decoded / gain
-        val text = if (displayValue == displayValue.toLong().toDouble()) {
-            displayValue.toLong().toString()
+        return if (gain <= 1.0) decoded else decoded / gain
+    }
+
+    fun displayInputValue(rawValue: Int): String {
+        val value = displayValue(rawValue)
+        return if (value == value.toLong().toDouble()) {
+            value.toLong().toString()
         } else {
-            displayValue.toString()
+            value.toString()
+        }
+    }
+
+    fun formattedValue(rawValue: Int): String {
+        val value = displayValue(rawValue)
+        val text = if (value == value.toLong().toDouble()) {
+            value.toLong().toString()
+        } else {
+            value.toString()
         }
 
         return if (unit.isBlank()) {

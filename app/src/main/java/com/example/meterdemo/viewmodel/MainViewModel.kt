@@ -20,6 +20,8 @@ import com.example.meterdemo.persistence.PersistedMeterState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlin.math.roundToInt
+import kotlin.math.roundToLong
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -74,7 +76,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             return
         }
 
-        logger.info("Updated raw value: address=${point.address}, value=$value")
+        logger.info("Updated measured value: address=${point.address}, input=${state.rawValueInput}, raw=$value")
         persistState()
         refreshUiState(selectedPointIndex = state.selectedPointIndex)
     }
@@ -572,26 +574,25 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun formatRawValueInput(point: MeterValueSnapshot): String {
-        return when (point.dataType) {
-            DataType.FLOAT32 -> Float.fromBits(point.rawValue).toString()
-            DataType.UINT32 -> (point.rawValue.toLong() and 0xFFFFFFFFL).toString()
-            DataType.UINT16 -> (point.rawValue and 0xFFFF).toString()
-            else -> point.rawValue.toString()
-        }
+        return point.displayInputValue
     }
 
     private fun parseRawValueInput(point: MeterValueSnapshot, input: String): Int? {
+        val displayValue = input.toDoubleOrNull() ?: return null
+        val scaledValue = if (point.gain <= 1.0) displayValue else displayValue * point.gain
+
         return when (point.dataType) {
-            DataType.FLOAT32 -> input.toFloatOrNull()?.toRawBits()
-            DataType.UINT16 -> input.toLongOrNull()
-                ?.takeIf { it in 0..0xFFFF }
+            DataType.FLOAT32 -> scaledValue.toFloat().toRawBits()
+            DataType.UINT16 -> scaledValue.roundToInt()
+                .takeIf { it in 0..0xFFFF }
                 ?.toInt()
 
-            DataType.UINT32 -> input.toLongOrNull()
-                ?.takeIf { it in 0..0xFFFFFFFFL }
+            DataType.UINT32 -> scaledValue.roundToLong()
+                .takeIf { it in 0..0xFFFFFFFFL }
                 ?.toInt()
 
-            DataType.INT16, DataType.INT32 -> input.toIntOrNull()
+            DataType.INT16 -> scaledValue.roundToInt().takeIf { it in Short.MIN_VALUE..Short.MAX_VALUE }
+            DataType.INT32 -> scaledValue.roundToInt()
         }
     }
 
