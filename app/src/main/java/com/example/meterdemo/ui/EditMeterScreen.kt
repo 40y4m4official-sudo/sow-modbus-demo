@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -40,9 +41,11 @@ fun EditMeterScreen(
     onBack: () -> Unit,
     onCreateMeter: () -> Unit,
     onEditMeter: (String) -> Unit,
+    onViewPreset: (String) -> Unit,
     onDeleteMeters: (Set<String>) -> Unit
 ) {
     var deleteMode by rememberSaveable { mutableStateOf(false) }
+    var showPresets by rememberSaveable { mutableStateOf(false) }
     var selectedIds by rememberSaveable { mutableStateOf(setOf<String>()) }
     var showDeleteDialog by remember { mutableStateOf(false) }
 
@@ -72,6 +75,7 @@ fun EditMeterScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
+            .safeDrawingPadding()
             .padding(horizontal = 20.dp, vertical = 16.dp)
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -103,7 +107,7 @@ fun EditMeterScreen(
                 text = if (deleteMode) {
                     "Select the user meters to remove."
                 } else {
-                    "Tap a user meter to open its register settings."
+                    "Tap a user meter to edit it. Presets can be shown below for view-only details."
                 },
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -111,83 +115,72 @@ fun EditMeterScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            if (uiState.userProfiles.isEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "No added meters yet.",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            } else {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f),
-                    contentPadding = PaddingValues(bottom = 112.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    items(uiState.userProfiles) { profile ->
-                        Card(
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+                contentPadding = PaddingValues(bottom = 112.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                if (uiState.userProfiles.isEmpty()) {
+                    item {
+                        Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable {
-                                    if (deleteMode) {
-                                        selectedIds = if (selectedIds.contains(profile.modelId)) {
-                                            selectedIds - profile.modelId
-                                        } else {
-                                            selectedIds + profile.modelId
-                                        }
-                                    } else {
-                                        onEditMeter(profile.modelId)
-                                    }
-                                }
+                                .padding(vertical = 24.dp),
+                            contentAlignment = Alignment.Center
                         ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(16.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
+                            Text(
+                                text = "No added meters yet.",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                } else {
+                    items(uiState.userProfiles) { profile ->
+                        MeterProfileCard(
+                            title = profile.displayName,
+                            subtitle = profile.modelId,
+                            actionText = if (deleteMode) "" else "Edit",
+                            deleteMode = deleteMode,
+                            checked = selectedIds.contains(profile.modelId),
+                            onCheckedChange = { checked ->
+                                selectedIds = if (checked) selectedIds + profile.modelId else selectedIds - profile.modelId
+                            },
+                            onClick = {
                                 if (deleteMode) {
-                                    Checkbox(
-                                        checked = selectedIds.contains(profile.modelId),
-                                        onCheckedChange = { checked ->
-                                            selectedIds = if (checked) {
-                                                selectedIds + profile.modelId
-                                            } else {
-                                                selectedIds - profile.modelId
-                                            }
-                                        }
-                                    )
-                                }
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = profile.displayName,
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.SemiBold
-                                    )
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    Text(
-                                        text = profile.modelId,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                                if (!deleteMode) {
-                                    Text(
-                                        text = "Edit",
-                                        style = MaterialTheme.typography.labelLarge,
-                                        color = MaterialTheme.colorScheme.primary
-                                    )
+                                    selectedIds = if (selectedIds.contains(profile.modelId)) {
+                                        selectedIds - profile.modelId
+                                    } else {
+                                        selectedIds + profile.modelId
+                                    }
+                                } else {
+                                    onEditMeter(profile.modelId)
                                 }
                             }
-                        }
+                        )
+                    }
+                }
+                item {
+                    OutlinedButton(
+                        onClick = { showPresets = !showPresets },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(if (showPresets) "Hide Presets" else "Show Presets")
+                    }
+                }
+                if (showPresets) {
+                    items(uiState.builtinProfiles) { profile ->
+                        MeterProfileCard(
+                            title = profile.displayName,
+                            subtitle = profile.modelId,
+                            actionText = "View",
+                            deleteMode = false,
+                            checked = false,
+                            onCheckedChange = {},
+                            onClick = { onViewPreset(profile.modelId) }
+                        )
                     }
                 }
             }
@@ -211,6 +204,57 @@ fun EditMeterScreen(
             shape = RoundedCornerShape(24.dp)
         ) {
             Text(if (deleteMode) "Delete Selected Meters" else "Add Meter")
+        }
+    }
+}
+
+@Composable
+private fun MeterProfileCard(
+    title: String,
+    subtitle: String,
+    actionText: String,
+    deleteMode: Boolean,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (deleteMode) {
+                Checkbox(
+                    checked = checked,
+                    onCheckedChange = onCheckedChange
+                )
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            if (!deleteMode && actionText.isNotBlank()) {
+                Text(
+                    text = actionText,
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
         }
     }
 }

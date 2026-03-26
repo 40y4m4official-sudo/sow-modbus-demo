@@ -1,5 +1,6 @@
 package com.example.meterdemo.modbus
 
+import com.example.meterdemo.meter.model.DataType
 import com.example.meterdemo.meter.model.MeterPoint
 import com.example.meterdemo.meter.model.WordByteOrder
 import com.example.meterdemo.meter.repository.MeterRepository
@@ -73,34 +74,48 @@ class ModbusRtuSlaveEngine(
         point: MeterPoint,
         rawValue: Int
     ): ByteArray {
-        return when (point.registerCount) {
-            1 -> {
-                val msb = ((rawValue shr 8) and 0xFF).toByte()
-                val lsb = (rawValue and 0xFF).toByte()
-                when (point.wordByteOrder) {
-                    WordByteOrder.MSB_MSB,
-                    WordByteOrder.LSB_MSB -> byteArrayOf(msb, lsb)
-
-                    WordByteOrder.LSB_LSB,
-                    WordByteOrder.MSB_LSB -> byteArrayOf(lsb, msb)
-                }
-            }
-
-            2 -> {
-                val b3 = ((rawValue ushr 24) and 0xFF).toByte()
-                val b2 = ((rawValue ushr 16) and 0xFF).toByte()
-                val b1 = ((rawValue ushr 8) and 0xFF).toByte()
-                val b0 = (rawValue and 0xFF).toByte()
-                when (point.wordByteOrder) {
-                    WordByteOrder.MSB_MSB -> byteArrayOf(b3, b2, b1, b0)
-                    WordByteOrder.LSB_LSB -> byteArrayOf(b0, b1, b2, b3)
-                    WordByteOrder.MSB_LSB -> byteArrayOf(b2, b3, b0, b1)
-                    WordByteOrder.LSB_MSB -> byteArrayOf(b1, b0, b3, b2)
-                }
-            }
-
-            else -> ByteArray(point.registerCount * 2)
+        val registerCount = point.registerCount.coerceIn(1, 4)
+        val totalBytes = registerCount * 2
+        val extensionByte = when (point.dataType) {
+            DataType.INT -> if (rawValue < 0) 0xFF.toByte() else 0x00
+            DataType.FLOAT -> 0x00
         }
+
+        val naturalBytes = ByteArray(totalBytes) { extensionByte }
+        val rawBytes = byteArrayOf(
+            ((rawValue ushr 24) and 0xFF).toByte(),
+            ((rawValue ushr 16) and 0xFF).toByte(),
+            ((rawValue ushr 8) and 0xFF).toByte(),
+            (rawValue and 0xFF).toByte()
+        )
+
+        val copyLength = minOf(rawBytes.size, naturalBytes.size)
+        val srcStart = rawBytes.size - copyLength
+        val dstStart = naturalBytes.size - copyLength
+        rawBytes.copyInto(
+            destination = naturalBytes,
+            destinationOffset = dstStart,
+            startIndex = srcStart,
+            endIndex = rawBytes.size
+        )
+
+        val words = naturalBytes
+            .toList()
+            .chunked(2)
+            .map { word -> word.toByteArray() }
+            .toMutableList()
+
+        if (point.wordByteOrder == WordByteOrder.LSB_LSB || point.wordByteOrder == WordByteOrder.LSB_MSB) {
+            words.reverse()
+        }
+
+        if (point.wordByteOrder == WordByteOrder.MSB_LSB || point.wordByteOrder == WordByteOrder.LSB_LSB) {
+            for (index in words.indices) {
+                words[index] = words[index].reversedArray()
+            }
+        }
+
+        return words.flatMap { it.asList() }.toByteArray()
     }
 
     private fun buildExceptionResponse(

@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -26,6 +27,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.example.meterdemo.meter.model.DataType
 import com.example.meterdemo.viewmodel.MainUiState
 
 @Composable
@@ -45,6 +47,7 @@ fun MeterValuesScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.surface)
+            .safeDrawingPadding()
             .padding(20.dp)
     ) {
         Row(
@@ -155,8 +158,14 @@ fun MeterValuesScreen(
                 OutlinedTextField(
                     value = uiState.rawValueInput,
                     onValueChange = onRawValueChange,
-                    label = { Text("Raw Value") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    label = { Text("Measured Value") },
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = if (selectedPoint?.dataType == DataType.FLOAT) {
+                            KeyboardType.Decimal
+                        } else {
+                            KeyboardType.Number
+                        }
+                    ),
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.height(12.dp))

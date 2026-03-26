@@ -65,6 +65,10 @@ fun MeterDemoApp(viewModel: MainViewModel) {
                 viewModel.startEditingUserMeter(modelId)
                 currentScreen = Screen.AddMeter
             },
+            onViewPreset = { modelId ->
+                viewModel.startViewingBuiltinMeter(modelId)
+                currentScreen = Screen.AddMeter
+            },
             onDeleteMeters = viewModel::deleteUserMeters
         )
 
@@ -81,6 +85,9 @@ fun MeterDemoApp(viewModel: MainViewModel) {
             onRegisterAddressChange = { index, value ->
                 viewModel.updateEditDraftRegister(index) { copy(addressInput = value) }
             },
+            onRegisterCountChange = { index, value ->
+                viewModel.updateEditDraftRegister(index) { copy(registerCountInput = value) }
+            },
             onRegisterGainChange = { index, value ->
                 viewModel.updateEditDraftRegister(index) { copy(gainInput = value) }
             },
@@ -96,6 +103,7 @@ fun MeterDemoApp(viewModel: MainViewModel) {
             onRegisterWordByteOrderChange = { index ->
                 viewModel.updateEditDraftRegister(index) { copy(wordByteOrder = wordByteOrder.next()) }
             },
+            onValidateBeforeOverwrite = viewModel::validateMeterDraft,
             onAddRegister = viewModel::addEditDraftRegister,
             onApply = {
                 if (viewModel.saveMeterDraft()) {

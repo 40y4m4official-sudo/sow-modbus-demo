@@ -1,5 +1,6 @@
 package com.example.meterdemo.meter.repository
 
+import com.example.meterdemo.meter.model.DataType
 import com.example.meterdemo.meter.model.MeterPoint
 import com.example.meterdemo.meter.model.MeterProfile
 
@@ -95,6 +96,7 @@ class MeterRepository(
                 address = point.address,
                 registerCount = point.registerCount,
                 gain = point.gain,
+                dataType = point.dataType,
                 unit = point.unit,
                 rawValue = raw,
                 formattedValue = point.formattedValue(raw)
@@ -107,8 +109,30 @@ data class MeterValueSnapshot(
     val name: String,
     val address: Int,
     val registerCount: Int,
-    val gain: Int,
+    val gain: Double,
+    val dataType: DataType,
     val unit: String,
     val rawValue: Int,
     val formattedValue: String
-)
+) {
+    private val displayScale: Int?
+        get() = when {
+            unit == "V" -> 2
+            unit == "A" -> 1
+            unit == "kW" || unit == "kVar" || unit == "kVA" -> 3
+            name.contains("力率") || name.contains("Power Factor", ignoreCase = true) -> 3
+            else -> null
+        }
+
+    val displayInputValue: String
+        get() {
+            val displayValue = when (dataType) {
+                DataType.FLOAT -> Float.fromBits(rawValue).toDouble()
+                DataType.INT -> if (registerCount == 1) rawValue.toShort().toDouble() else rawValue.toDouble()
+            }.let { decoded ->
+                if (gain <= 1.0) decoded else decoded / gain
+            }
+
+            return MeterPoint.formatDisplayNumber(displayValue, displayScale)
+        }
+}

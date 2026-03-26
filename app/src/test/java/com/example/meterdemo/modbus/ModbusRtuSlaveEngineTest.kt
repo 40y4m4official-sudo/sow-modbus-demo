@@ -284,8 +284,8 @@ class ModbusRtuSlaveEngineTest {
                     name = "Input Energy",
                     address = 100,
                     registerCount = 1,
-                    gain = 1,
-                    dataType = DataType.UINT16,
+                    gain = 1.0,
+                    dataType = DataType.INT,
                     unit = "kWh",
                     initialRawValue = 0x1234
                 )
@@ -334,8 +334,8 @@ class ModbusRtuSlaveEngineTest {
                     name = "Demand",
                     address = 200,
                     registerCount = 2,
-                    gain = 1,
-                    dataType = DataType.INT32,
+                    gain = 1.0,
+                    dataType = DataType.INT,
                     wordByteOrder = WordByteOrder.MSB_LSB,
                     unit = "W",
                     initialRawValue = 0x11223344
@@ -365,6 +365,117 @@ class ModbusRtuSlaveEngineTest {
                 0x11,
                 0x44,
                 0x33
+            )
+        )
+
+        assertArrayEquals(expected, response)
+    }
+
+    @Test
+    fun handleRequest_threeWordPoint_signExtendsAndReturnsSixBytes() {
+        val profile = MeterProfile(
+            modelId = "three-word",
+            displayName = "Three Word Meter",
+            slaveId = 2,
+            baudRate = 19200,
+            dataBits = 8,
+            parity = 2,
+            stopBits = 1,
+            functionCode = 0x03,
+            points = listOf(
+                MeterPoint(
+                    name = "Signed Total",
+                    address = 300,
+                    registerCount = 3,
+                    gain = 1.0,
+                    dataType = DataType.INT,
+                    unit = "",
+                    initialRawValue = -2
+                )
+            )
+        )
+        repository = MeterRepository(profile)
+        engine = ModbusRtuSlaveEngine(repository)
+
+        val request = requestFrame(
+            slaveId = 2,
+            functionCode = 0x03,
+            startAddress = 300,
+            quantity = 3
+        )
+
+        val response = engine.handleRequest(request)
+
+        requireNotNull(response)
+
+        val expected = ModbusCrc.appendCrc(
+            byteArrayOf(
+                0x02,
+                0x03,
+                0x06,
+                0xFF.toByte(),
+                0xFF.toByte(),
+                0xFF.toByte(),
+                0xFF.toByte(),
+                0xFF.toByte(),
+                0xFE.toByte()
+            )
+        )
+
+        assertArrayEquals(expected, response)
+    }
+
+    @Test
+    fun handleRequest_fourWordPoint_zeroExtendsAndReordersWords() {
+        val profile = MeterProfile(
+            modelId = "four-word",
+            displayName = "Four Word Meter",
+            slaveId = 2,
+            baudRate = 19200,
+            dataBits = 8,
+            parity = 2,
+            stopBits = 1,
+            functionCode = 0x03,
+            points = listOf(
+                MeterPoint(
+                    name = "Unsigned Total",
+                    address = 400,
+                    registerCount = 4,
+                    gain = 1.0,
+                    dataType = DataType.INT,
+                    wordByteOrder = WordByteOrder.LSB_MSB,
+                    unit = "",
+                    initialRawValue = 0x11223344
+                )
+            )
+        )
+        repository = MeterRepository(profile)
+        engine = ModbusRtuSlaveEngine(repository)
+
+        val request = requestFrame(
+            slaveId = 2,
+            functionCode = 0x03,
+            startAddress = 400,
+            quantity = 4
+        )
+
+        val response = engine.handleRequest(request)
+
+        requireNotNull(response)
+
+        val expected = ModbusCrc.appendCrc(
+            byteArrayOf(
+                0x02,
+                0x03,
+                0x08,
+                0x33,
+                0x44,
+                0x11,
+                0x22,
+                0x00,
+                0x00,
+                0x00,
+                0x00
             )
         )
 
