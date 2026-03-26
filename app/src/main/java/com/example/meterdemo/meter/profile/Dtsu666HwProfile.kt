@@ -9,9 +9,9 @@ object Dtsu666HwProfile {
         modelId = "dtsu666-hw",
         displayName = "DTSU666-HW",
         slaveId = 2,
-        baudRate = 19200,
+        baudRate = 9600,
         dataBits = 8,
-        parity = 2,
+        parity = 0,
         stopBits = 1,
         functionCode = 0x03,
         points = listOf(
