@@ -1,5 +1,8 @@
 package com.example.meterdemo.meter.model
 
+import java.math.BigDecimal
+import java.math.RoundingMode
+
 data class MeterPoint(
     val name: String,
     val address: Int,
@@ -10,6 +13,15 @@ data class MeterPoint(
     val initialRawValue: Int,
     val wordByteOrder: WordByteOrder = WordByteOrder.MSB_MSB
 ) {
+    private val displayScale: Int?
+        get() = when {
+            unit == "V" -> 2
+            unit == "A" -> 1
+            unit == "kW" || unit == "kVar" || unit == "kVA" -> 3
+            isPowerFactorPoint() -> 3
+            else -> null
+        }
+
     fun decodedValue(rawValue: Int): Double {
         return when (dataType) {
             DataType.FLOAT -> Float.fromBits(rawValue).toDouble()
@@ -31,25 +43,36 @@ data class MeterPoint(
 
     fun displayInputValue(rawValue: Int): String {
         val value = displayValue(rawValue)
-        return if (value == value.toLong().toDouble()) {
-            value.toLong().toString()
-        } else {
-            value.toString()
-        }
+        return formatDisplayNumber(value, displayScale)
     }
 
     fun formattedValue(rawValue: Int): String {
         val value = displayValue(rawValue)
-        val text = if (value == value.toLong().toDouble()) {
-            value.toLong().toString()
-        } else {
-            value.toString()
-        }
+        val text = formatDisplayNumber(value, displayScale)
 
         return if (unit.isBlank()) {
             text
         } else {
             "$text $unit"
+        }
+    }
+
+    private fun isPowerFactorPoint(): Boolean {
+        return name.contains("力率") || name.contains("Power Factor", ignoreCase = true)
+    }
+
+    companion object {
+        fun formatDisplayNumber(value: Double, scale: Int? = null): String {
+            if (value == value.toLong().toDouble()) {
+                return value.toLong().toString()
+            }
+
+            val resolvedScale = scale ?: 6
+
+            return BigDecimal.valueOf(value)
+                .setScale(resolvedScale, RoundingMode.HALF_UP)
+                .stripTrailingZeros()
+                .toPlainString()
         }
     }
 }

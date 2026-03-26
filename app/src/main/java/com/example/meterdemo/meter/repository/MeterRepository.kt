@@ -115,6 +115,15 @@ data class MeterValueSnapshot(
     val rawValue: Int,
     val formattedValue: String
 ) {
+    private val displayScale: Int?
+        get() = when {
+            unit == "V" -> 2
+            unit == "A" -> 1
+            unit == "kW" || unit == "kVar" || unit == "kVA" -> 3
+            name.contains("力率") || name.contains("Power Factor", ignoreCase = true) -> 3
+            else -> null
+        }
+
     val displayInputValue: String
         get() {
             val displayValue = when (dataType) {
@@ -124,10 +133,6 @@ data class MeterValueSnapshot(
                 if (gain <= 1.0) decoded else decoded / gain
             }
 
-            return if (displayValue == displayValue.toLong().toDouble()) {
-                displayValue.toLong().toString()
-            } else {
-                displayValue.toString()
-            }
+            return MeterPoint.formatDisplayNumber(displayValue, displayScale)
         }
 }
