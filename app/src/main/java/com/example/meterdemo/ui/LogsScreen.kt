@@ -1,6 +1,8 @@
 package com.example.meterdemo.ui
 
+import android.content.Intent
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Alignment
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.safeDrawingPadding
@@ -15,6 +17,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.meterdemo.logging.CommLog
@@ -28,6 +31,8 @@ fun LogsScreen(
     onBack: () -> Unit,
     onClearLogs: () -> Unit
 ) {
+    val context = LocalContext.current
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -44,8 +49,21 @@ fun LogsScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 12.dp, bottom = 16.dp),
-            horizontalArrangement = Arrangement.End
+            horizontalArrangement = Arrangement.spacedBy(12.dp, alignment = Alignment.End)
         ) {
+            OutlinedButton(
+                onClick = {
+                    val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                        type = "text/plain"
+                        putExtra(Intent.EXTRA_SUBJECT, "Meter Demo Logs")
+                        putExtra(Intent.EXTRA_TEXT, buildLogExportText(logs))
+                    }
+                    context.startActivity(Intent.createChooser(shareIntent, "Export logs"))
+                },
+                enabled = logs.isNotEmpty()
+            ) {
+                Text("Export Logs")
+            }
             OutlinedButton(onClick = onClearLogs) {
                 Text("Clear Logs")
             }
@@ -60,6 +78,26 @@ fun LogsScreen(
             items(logs) { log ->
                 LogRow(log = log)
                 HorizontalDivider()
+            }
+        }
+    }
+}
+
+private fun buildLogExportText(logs: List<CommLog>): String {
+    val formatter = SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.US)
+    return logs.asReversed().joinToString(separator = "\n") { log ->
+        buildString {
+            append("[")
+            append(formatter.format(Date(log.timestamp)))
+            append("] ")
+            append(log.direction.name)
+            if (log.hex.isNotBlank()) {
+                append(" ")
+                append(log.hex)
+            }
+            if (log.note.isNotBlank()) {
+                append(" | ")
+                append(log.note)
             }
         }
     }
