@@ -103,6 +103,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     init {
         restorePersistedState()
+        ensureSeedUserProfiles()
         _uiState = MutableStateFlow(createUiState())
     }
 
@@ -803,6 +804,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    private fun ensureSeedUserProfiles() {
+        if (userProfiles.any { it.modelId == BACKUP_CT_EDITABLE_MODEL_ID }) {
+            return
+        }
+
+        val editableClone = MeterProfiles.findByModelId("backup-ct")?.toEditableUserClone(
+            modelId = BACKUP_CT_EDITABLE_MODEL_ID,
+            displayName = "BackUp-CT Editable"
+        ) ?: return
+
+        userProfiles += editableClone
+        persistState()
+    }
+
     private fun parseHexString(input: String): ByteArray? {
         val cleaned = input
             .replace("\n", " ")
@@ -847,11 +862,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private companion object {
+        private const val BACKUP_CT_EDITABLE_MODEL_ID = "backup-ct-editable"
         val SUPPORTED_BAUD_RATES = listOf(1200, 2400, 4800, 9600, 19200, 115200)
     }
 
     private fun parityLabel(value: Int): String {
         return SerialParity.fromProfileValue(value).label
+    }
+
+    private fun MeterProfile.toEditableUserClone(modelId: String, displayName: String): MeterProfile {
+        return copy(
+            modelId = modelId,
+            displayName = displayName,
+            points = points.map { point -> point.copy() }
+        )
     }
 }
 
