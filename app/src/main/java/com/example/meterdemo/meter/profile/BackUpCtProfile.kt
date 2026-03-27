@@ -22,7 +22,7 @@ object BackUpCtProfile {
             MeterPoint("有効電力", 37113, 2, 1000.0, DataType.INT, "kW", 863550),
             MeterPoint("無効電力", 37115, 2, 1000.0, DataType.INT, "kVar", 283600),
             MeterPoint("力率", 37117, 1, 1000.0, DataType.INT, "", 950),
-            MeterPoint("正方向合計有効電力量", 37119, 2, 100.0, DataType.INT, "kWh", 12345),
+            MeterPoint("正方向合計有効電力量", 37119, 2, 100.0, DataType.INT, "kWh", 16115),
             MeterPoint("負方向合計有効電力量", 37121, 2, 100.0, DataType.INT, "kWh", 4321),
             MeterPoint("合計無効電力量", 37123, 2, 100.0, DataType.INT, "kVarh", 111100),
             MeterPoint("A-B線電圧", 37126, 2, 10.0, DataType.INT, "V", 2020),
