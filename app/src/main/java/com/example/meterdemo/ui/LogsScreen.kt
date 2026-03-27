@@ -30,7 +30,8 @@ import java.util.Locale
 fun LogsScreen(
     logs: List<CommLog>,
     onBack: () -> Unit,
-    onClearLogs: () -> Unit
+    onClearLogs: () -> Unit,
+    onOpenSummary: () -> Unit
 ) {
     val context = LocalContext.current
 
@@ -58,6 +59,12 @@ fun LogsScreen(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+            OutlinedButton(
+                onClick = onOpenSummary,
+                enabled = logs.isNotEmpty()
+            ) {
+                Text("Summary")
+            }
             OutlinedButton(
                 onClick = {
                     val exportUri = LogExporter.exportLogs(context, logs)

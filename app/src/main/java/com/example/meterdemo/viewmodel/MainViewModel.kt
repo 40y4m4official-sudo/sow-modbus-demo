@@ -103,7 +103,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     init {
         restorePersistedState()
-        ensureSeedUserProfiles()
         _uiState = MutableStateFlow(createUiState())
     }
 
@@ -793,6 +792,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val persisted = persistence.loadState() ?: return
         userProfiles.clear()
         userProfiles.addAll(persisted.userProfiles)
+        userProfiles.removeAll { it.modelId == REMOVED_BACKUP_CT_EDITABLE_MODEL_ID }
 
         val profileToLoad = allProfiles().firstOrNull { it.modelId == persisted.selectedProfileModelId }
             ?: repository.getProfile()
@@ -802,20 +802,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         persisted.currentRawValues.forEach { (address, value) ->
             repository.setRawValue(address, value)
         }
-    }
-
-    private fun ensureSeedUserProfiles() {
-        if (userProfiles.any { it.modelId == BACKUP_CT_EDITABLE_MODEL_ID }) {
-            return
-        }
-
-        val editableClone = MeterProfiles.findByModelId("backup-ct")?.toEditableUserClone(
-            modelId = BACKUP_CT_EDITABLE_MODEL_ID,
-            displayName = "BackUp-CT Editable"
-        ) ?: return
-
-        userProfiles += editableClone
-        persistState()
     }
 
     private fun parseHexString(input: String): ByteArray? {
@@ -862,7 +848,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private companion object {
-        private const val BACKUP_CT_EDITABLE_MODEL_ID = "backup-ct-editable"
+        private const val REMOVED_BACKUP_CT_EDITABLE_MODEL_ID = "backup-ct-editable"
         val SUPPORTED_BAUD_RATES = listOf(1200, 2400, 4800, 9600, 19200, 115200)
     }
 
@@ -870,13 +856,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         return SerialParity.fromProfileValue(value).label
     }
 
-    private fun MeterProfile.toEditableUserClone(modelId: String, displayName: String): MeterProfile {
-        return copy(
-            modelId = modelId,
-            displayName = displayName,
-            points = points.map { point -> point.copy() }
-        )
-    }
 }
 
 data class MainUiState(

@@ -12,6 +12,7 @@ private enum class Screen {
     Main,
     Settings,
     Logs,
+    LogSummary,
     EditMeter,
     AddMeter
 }
@@ -55,7 +56,13 @@ fun MeterDemoApp(viewModel: MainViewModel) {
         Screen.Logs -> LogsScreen(
             logs = logs,
             onBack = { currentScreen = Screen.Settings },
-            onClearLogs = viewModel::clearLogs
+            onClearLogs = viewModel::clearLogs,
+            onOpenSummary = { currentScreen = Screen.LogSummary }
+        )
+
+        Screen.LogSummary -> LogSummaryScreen(
+            logs = logs,
+            onBack = { currentScreen = Screen.Logs }
         )
 
         Screen.EditMeter -> EditMeterScreen(
