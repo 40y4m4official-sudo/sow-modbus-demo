@@ -45,7 +45,6 @@ fun SettingsScreen(
     onSlaveIdChange: (String) -> Unit,
     onApplySlaveId: () -> Unit,
     onOpenLogs: () -> Unit,
-    onRefreshLogs: () -> Unit,
     onRefreshUsbDevices: () -> Unit,
     onRequestUsbPermission: (String) -> Unit,
     onConnectUsbDevice: (String) -> Unit,
@@ -323,15 +322,9 @@ fun SettingsScreen(
                     ) {
                         Button(
                             onClick = onOpenLogs,
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.fillMaxWidth()
                         ) {
                             Text("Open Logs")
-                        }
-                        OutlinedButton(
-                            onClick = onRefreshLogs,
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text("Refresh Logs")
                         }
                     }
                 }

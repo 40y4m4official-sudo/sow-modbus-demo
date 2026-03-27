@@ -228,11 +228,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         )
     }
 
-    fun refreshLogs() {
-        logger.info("Refreshed logs")
-        refreshUiState(selectedPointIndex = _uiState.value.selectedPointIndex)
-    }
-
     fun refreshUsbDevices() {
         val devices = usbDeviceScanner.scan()
         val serialDevices = usbSerialScanner.scan()
