@@ -2,6 +2,7 @@ package com.example.meterdemo.viewmodel
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
+import com.example.meterdemo.logging.CommCategory
 import com.example.meterdemo.logging.CommLog
 import com.example.meterdemo.logging.CommLogger
 import com.example.meterdemo.meter.model.DataType
@@ -22,6 +23,7 @@ import com.example.meterdemo.usb.UsbDeviceScanner
 import com.example.meterdemo.usb.UsbDeviceSummary
 import com.example.meterdemo.usb.UsbSerialConnectionManager
 import com.example.meterdemo.usb.UsbSerialDeviceSummary
+import com.example.meterdemo.usb.UsbRequestFrameAssembler
 import com.example.meterdemo.usb.UsbSerialScanner
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -38,15 +40,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val persistence = MeterPersistence(application)
     private val usbDeviceScanner = UsbDeviceScanner(application)
     private val usbSerialScanner = UsbSerialScanner(application)
-    private val usbReceiveBuffer = mutableListOf<Byte>()
+    private val usbRequestFrameAssembler = UsbRequestFrameAssembler()
     private val usbSerialConnectionManager = UsbSerialConnectionManager(
         context = application,
         listener = object : UsbSerialConnectionManager.Listener {
             override fun onPermissionResult(deviceName: String, granted: Boolean) {
                 if (granted) {
-                    logger.info("USB permission granted: $deviceName")
+                    logger.info("USB permission granted: $deviceName", CommCategory.USB)
                 } else {
-                    logger.error("USB permission denied: $deviceName")
+                    logger.error("USB permission denied: $deviceName", CommCategory.USB)
                 }
                 refreshUsbDevices()
             }
@@ -54,7 +56,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             override fun onConnected(deviceName: String) {
                 val profile = repository.getProfile()
                 logger.info(
-                    "USB serial connected: $deviceName (${profile.baudRate} 8${parityLabel(profile.parity).first()}${profile.stopBits})"
+                    "USB serial connected: $deviceName (${profile.baudRate} 8${parityLabel(profile.parity).first()}${profile.stopBits})",
+                    CommCategory.USB
                 )
                 refreshUiState(
                     selectedPointIndex = _uiState.value.selectedPointIndex,
@@ -66,9 +69,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
             override fun onDisconnected(deviceName: String?, reason: String) {
                 if (deviceName != null) {
-                    logger.info("USB serial disconnected: $deviceName ($reason)")
+                    logger.info("USB serial disconnected: $deviceName ($reason)", CommCategory.USB)
                 }
-                usbReceiveBuffer.clear()
+                usbRequestFrameAssembler.clear()
                 refreshUiState(
                     selectedPointIndex = _uiState.value.selectedPointIndex,
                     usbConnectionStatus = reason,
@@ -78,12 +81,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
 
             override fun onDataReceived(data: ByteArray) {
-                logger.rx(ModbusFrameParser.toHexString(data), "USB RX")
+                logger.rx(ModbusFrameParser.toHexString(data), "USB RX", CommCategory.USB)
                 appendUsbData(data)
             }
 
             override fun onError(message: String) {
-                logger.error(message)
+                logger.error(message, CommCategory.USB)
                 refreshUiState(
                     selectedPointIndex = _uiState.value.selectedPointIndex,
                     usbConnectionStatus = "Error"
@@ -100,6 +103,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     init {
         restorePersistedState()
+        ensureSeedUserProfiles()
         _uiState = MutableStateFlow(createUiState())
     }
 
@@ -189,7 +193,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun refreshUsbDevices() {
         val devices = usbDeviceScanner.scan()
         val serialDevices = usbSerialScanner.scan()
-        logger.info("Detected ${devices.size} USB device(s)")
+        logger.info("Detected ${devices.size} USB device(s)", CommCategory.USB)
         refreshUiState(
             selectedPointIndex = _uiState.value.selectedPointIndex,
             usbDevices = devices,
@@ -199,9 +203,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun requestUsbSerialPermission(deviceName: String) {
         if (!usbSerialConnectionManager.requestPermission(deviceName)) {
-            logger.error("Failed to request USB permission: $deviceName")
+            logger.error("Failed to request USB permission: $deviceName", CommCategory.USB)
         } else {
-            logger.info("Requested USB permission: $deviceName")
+            logger.info("Requested USB permission: $deviceName", CommCategory.USB)
         }
     }
 
@@ -800,6 +804,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    private fun ensureSeedUserProfiles() {
+        if (userProfiles.any { it.modelId == BACKUP_CT_EDITABLE_MODEL_ID }) {
+            return
+        }
+
+        val editableClone = MeterProfiles.findByModelId("backup-ct")?.toEditableUserClone(
+            modelId = BACKUP_CT_EDITABLE_MODEL_ID,
+            displayName = "BackUp-CT Editable"
+        ) ?: return
+
+        userProfiles += editableClone
+        persistState()
+    }
+
     private fun parseHexString(input: String): ByteArray? {
         val cleaned = input
             .replace("\n", " ")
@@ -818,20 +836,22 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun appendUsbData(data: ByteArray) {
-        usbReceiveBuffer.addAll(data.toList())
+        val assemblyResult = usbRequestFrameAssembler.append(
+            data = data,
+            expectedSlaveId = repository.getSlaveId(),
+            allowedFunctionCodes = setOf(0x03, 0x04)
+        )
 
-        while (usbReceiveBuffer.size >= USB_REQUEST_FRAME_SIZE) {
-            val frame = usbReceiveBuffer.take(USB_REQUEST_FRAME_SIZE).toByteArray()
-            usbReceiveBuffer.subList(0, USB_REQUEST_FRAME_SIZE).clear()
+        if (assemblyResult.droppedNoise.isNotEmpty()) {
+            logger.info("Dropped USB noise: ${ModbusFrameParser.toHexString(assemblyResult.droppedNoise)}", CommCategory.USB)
+        }
 
+        assemblyResult.frames.forEach { frame ->
             val response = engine.handleRequest(frame)
             if (response == null) {
-                logger.error("USB request was not handled")
-                continue
-            }
-
-            if (usbSerialConnectionManager.write(response)) {
-                logger.tx(ModbusFrameParser.toHexString(response), "USB TX")
+                logger.error("USB request was not handled: ${ModbusFrameParser.toHexString(frame)}", CommCategory.USB)
+            } else if (usbSerialConnectionManager.write(response)) {
+                logger.tx(ModbusFrameParser.toHexString(response), "USB TX", CommCategory.USB)
             }
         }
     }
@@ -842,12 +862,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private companion object {
-        const val USB_REQUEST_FRAME_SIZE = 8
+        private const val BACKUP_CT_EDITABLE_MODEL_ID = "backup-ct-editable"
         val SUPPORTED_BAUD_RATES = listOf(1200, 2400, 4800, 9600, 19200, 115200)
     }
 
     private fun parityLabel(value: Int): String {
         return SerialParity.fromProfileValue(value).label
+    }
+
+    private fun MeterProfile.toEditableUserClone(modelId: String, displayName: String): MeterProfile {
+        return copy(
+            modelId = modelId,
+            displayName = displayName,
+            points = points.map { point -> point.copy() }
+        )
     }
 }
 

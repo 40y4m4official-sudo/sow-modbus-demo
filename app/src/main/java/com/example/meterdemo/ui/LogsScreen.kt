@@ -21,6 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.meterdemo.logging.CommLog
+import com.example.meterdemo.logging.LogExporter
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -51,12 +52,20 @@ fun LogsScreen(
                 .padding(top = 12.dp, bottom = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp, alignment = Alignment.End)
         ) {
+            Text(
+                text = "Stored: ${logs.size}",
+                modifier = Modifier.weight(1f).align(Alignment.CenterVertically),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
             OutlinedButton(
                 onClick = {
+                    val exportUri = LogExporter.exportLogs(context, logs)
                     val shareIntent = Intent(Intent.ACTION_SEND).apply {
                         type = "text/plain"
                         putExtra(Intent.EXTRA_SUBJECT, "Meter Demo Logs")
-                        putExtra(Intent.EXTRA_TEXT, buildLogExportText(logs))
+                        putExtra(Intent.EXTRA_STREAM, exportUri)
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                     }
                     context.startActivity(Intent.createChooser(shareIntent, "Export logs"))
                 },
@@ -83,26 +92,6 @@ fun LogsScreen(
     }
 }
 
-private fun buildLogExportText(logs: List<CommLog>): String {
-    val formatter = SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.US)
-    return logs.asReversed().joinToString(separator = "\n") { log ->
-        buildString {
-            append("[")
-            append(formatter.format(Date(log.timestamp)))
-            append("] ")
-            append(log.direction.name)
-            if (log.hex.isNotBlank()) {
-                append(" ")
-                append(log.hex)
-            }
-            if (log.note.isNotBlank()) {
-                append(" | ")
-                append(log.note)
-            }
-        }
-    }
-}
-
 @Composable
 private fun LogRow(log: CommLog) {
     val formatter = remember { SimpleDateFormat("HH:mm:ss.SSS", Locale.US) }
@@ -114,7 +103,7 @@ private fun LogRow(log: CommLog) {
             .padding(vertical = 10.dp)
     ) {
         Text(
-            text = "[$timeText] ${log.direction.name}",
+            text = "[$timeText] ${log.category.name} / ${log.direction.name}",
             style = MaterialTheme.typography.labelLarge
         )
         if (log.hex.isNotBlank()) {
