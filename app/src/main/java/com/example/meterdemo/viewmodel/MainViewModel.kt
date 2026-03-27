@@ -2,6 +2,7 @@ package com.example.meterdemo.viewmodel
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
+import com.example.meterdemo.logging.CommCategory
 import com.example.meterdemo.logging.CommLog
 import com.example.meterdemo.logging.CommLogger
 import com.example.meterdemo.meter.model.DataType
@@ -45,9 +46,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         listener = object : UsbSerialConnectionManager.Listener {
             override fun onPermissionResult(deviceName: String, granted: Boolean) {
                 if (granted) {
-                    logger.info("USB permission granted: $deviceName")
+                    logger.info("USB permission granted: $deviceName", CommCategory.USB)
                 } else {
-                    logger.error("USB permission denied: $deviceName")
+                    logger.error("USB permission denied: $deviceName", CommCategory.USB)
                 }
                 refreshUsbDevices()
             }
@@ -55,7 +56,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             override fun onConnected(deviceName: String) {
                 val profile = repository.getProfile()
                 logger.info(
-                    "USB serial connected: $deviceName (${profile.baudRate} 8${parityLabel(profile.parity).first()}${profile.stopBits})"
+                    "USB serial connected: $deviceName (${profile.baudRate} 8${parityLabel(profile.parity).first()}${profile.stopBits})",
+                    CommCategory.USB
                 )
                 refreshUiState(
                     selectedPointIndex = _uiState.value.selectedPointIndex,
@@ -67,7 +69,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
             override fun onDisconnected(deviceName: String?, reason: String) {
                 if (deviceName != null) {
-                    logger.info("USB serial disconnected: $deviceName ($reason)")
+                    logger.info("USB serial disconnected: $deviceName ($reason)", CommCategory.USB)
                 }
                 usbRequestFrameAssembler.clear()
                 refreshUiState(
@@ -79,12 +81,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
 
             override fun onDataReceived(data: ByteArray) {
-                logger.rx(ModbusFrameParser.toHexString(data), "USB RX")
+                logger.rx(ModbusFrameParser.toHexString(data), "USB RX", CommCategory.USB)
                 appendUsbData(data)
             }
 
             override fun onError(message: String) {
-                logger.error(message)
+                logger.error(message, CommCategory.USB)
                 refreshUiState(
                     selectedPointIndex = _uiState.value.selectedPointIndex,
                     usbConnectionStatus = "Error"
@@ -190,7 +192,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun refreshUsbDevices() {
         val devices = usbDeviceScanner.scan()
         val serialDevices = usbSerialScanner.scan()
-        logger.info("Detected ${devices.size} USB device(s)")
+        logger.info("Detected ${devices.size} USB device(s)", CommCategory.USB)
         refreshUiState(
             selectedPointIndex = _uiState.value.selectedPointIndex,
             usbDevices = devices,
@@ -200,9 +202,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun requestUsbSerialPermission(deviceName: String) {
         if (!usbSerialConnectionManager.requestPermission(deviceName)) {
-            logger.error("Failed to request USB permission: $deviceName")
+            logger.error("Failed to request USB permission: $deviceName", CommCategory.USB)
         } else {
-            logger.info("Requested USB permission: $deviceName")
+            logger.info("Requested USB permission: $deviceName", CommCategory.USB)
         }
     }
 
@@ -826,15 +828,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         )
 
         if (assemblyResult.droppedNoise.isNotEmpty()) {
-            logger.info("Dropped USB noise: ${ModbusFrameParser.toHexString(assemblyResult.droppedNoise)}")
+            logger.info("Dropped USB noise: ${ModbusFrameParser.toHexString(assemblyResult.droppedNoise)}", CommCategory.USB)
         }
 
         assemblyResult.frames.forEach { frame ->
             val response = engine.handleRequest(frame)
             if (response == null) {
-                logger.error("USB request was not handled: ${ModbusFrameParser.toHexString(frame)}")
+                logger.error("USB request was not handled: ${ModbusFrameParser.toHexString(frame)}", CommCategory.USB)
             } else if (usbSerialConnectionManager.write(response)) {
-                logger.tx(ModbusFrameParser.toHexString(response), "USB TX")
+                logger.tx(ModbusFrameParser.toHexString(response), "USB TX", CommCategory.USB)
             }
         }
     }
