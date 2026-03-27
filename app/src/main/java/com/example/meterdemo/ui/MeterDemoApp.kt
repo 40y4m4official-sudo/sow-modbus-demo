@@ -32,7 +32,9 @@ fun MeterDemoApp(viewModel: MainViewModel) {
             onRawValueChange = viewModel::updateSelectedRawValue,
             onApplyValue = viewModel::applySelectedRawValue,
             onResetValues = viewModel::resetValues,
-            onSimulateRead = viewModel::simulateReadOfSelectedPoint
+            onSimulateRead = viewModel::simulateReadOfSelectedPoint,
+            onStartSimulation = viewModel::startSimulation,
+            onStopSimulation = viewModel::stopSimulation
         )
 
         Screen.Settings -> SettingsScreen(

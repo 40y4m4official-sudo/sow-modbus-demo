@@ -2,6 +2,7 @@ package com.example.meterdemo.viewmodel
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
 import com.example.meterdemo.logging.CommCategory
 import com.example.meterdemo.logging.CommLog
 import com.example.meterdemo.logging.CommLogger
@@ -14,6 +15,7 @@ import com.example.meterdemo.meter.model.WordByteOrder
 import com.example.meterdemo.meter.profiles.MeterProfiles
 import com.example.meterdemo.meter.repository.MeterRepository
 import com.example.meterdemo.meter.repository.MeterValueSnapshot
+import com.example.meterdemo.meter.simulation.MeterSimulationEngine
 import com.example.meterdemo.modbus.ModbusCrc
 import com.example.meterdemo.modbus.ModbusFrameParser
 import com.example.meterdemo.modbus.ModbusRtuSlaveEngine
@@ -25,9 +27,13 @@ import com.example.meterdemo.usb.UsbSerialConnectionManager
 import com.example.meterdemo.usb.UsbSerialDeviceSummary
 import com.example.meterdemo.usb.UsbRequestFrameAssembler
 import com.example.meterdemo.usb.UsbSerialScanner
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
@@ -41,6 +47,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val usbDeviceScanner = UsbDeviceScanner(application)
     private val usbSerialScanner = UsbSerialScanner(application)
     private val usbRequestFrameAssembler = UsbRequestFrameAssembler()
+    private val simulationEngine = MeterSimulationEngine()
+    private var simulationJob: Job? = null
     private val usbSerialConnectionManager = UsbSerialConnectionManager(
         context = application,
         listener = object : UsbSerialConnectionManager.Listener {
@@ -140,6 +148,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
 
         logger.info("Updated measured value: address=${point.address}, input=${state.rawValueInput}, raw=$value")
+        syncSimulationSeed()
         persistState()
         refreshUiState(selectedPointIndex = state.selectedPointIndex)
     }
@@ -147,6 +156,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun resetValues() {
         repository.resetCurrentProfileValues()
         logger.info("Reset all register values")
+        syncSimulationSeed()
         persistState()
         refreshUiState(selectedPointIndex = _uiState.value.selectedPointIndex)
     }
@@ -180,8 +190,37 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
         repository.loadProfile(profile)
         logger.info("Switched preset: ${profile.displayName}")
+        syncSimulationSeed()
         persistState()
         refreshUiState(selectedPointIndex = 0)
+    }
+
+    fun startSimulation() {
+        if (simulationJob != null) return
+
+        syncSimulationSeed()
+        logger.info("Started automatic meter simulation")
+        refreshUiState(
+            selectedPointIndex = _uiState.value.selectedPointIndex,
+            simulationRunning = true
+        )
+
+        simulationJob = viewModelScope.launch {
+            while (isActive) {
+                delay(SIMULATION_TICK_MS)
+                applySimulationTick()
+            }
+        }
+    }
+
+    fun stopSimulation() {
+        simulationJob?.cancel()
+        simulationJob = null
+        logger.info("Stopped automatic meter simulation")
+        refreshUiState(
+            selectedPointIndex = _uiState.value.selectedPointIndex,
+            simulationRunning = false
+        )
     }
 
     fun refreshLogs() {
@@ -432,6 +471,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         repository.loadProfile(profile)
                     }
                     logger.info("Updated user meter: ${profile.displayName}")
+                    syncSimulationSeed()
                     persistState()
                     refreshUiState(
                         editingExistingUserMeter = true,
@@ -450,6 +490,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             } else {
                 userProfiles += profile
                 logger.info("Added user meter: ${profile.displayName}")
+                syncSimulationSeed()
                 persistState()
                 refreshUiState(
                     editingExistingUserMeter = false,
@@ -604,7 +645,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         draftReadOnly: Boolean = _uiState.value.draftReadOnly,
         selectedEditableUserModelId: String? = _uiState.value.selectedEditableUserModelId,
         draftErrorMessage: String? = _uiState.value.draftErrorMessage,
-        editMeterDraft: MeterEditorDraft = _uiState.value.editMeterDraft
+        editMeterDraft: MeterEditorDraft = _uiState.value.editMeterDraft,
+        simulationRunning: Boolean = _uiState.value.simulationRunning
     ) {
         val snapshots = repository.snapshot()
         val safeIndex = when {
@@ -633,6 +675,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             selectedPointIndex = safeIndex,
             selectedPoint = selectedPoint,
             rawValueInput = rawValueInput ?: selectedPoint?.let { formatRawValueInput(it) }.orEmpty(),
+            simulationRunning = simulationRunning,
             editingExistingUserMeter = editingExistingUserMeter,
             draftReadOnly = draftReadOnly,
             selectedEditableUserModelId = selectedEditableUserModelId,
@@ -662,6 +705,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             selectedPointIndex = 0,
             selectedPoint = selectedPoint,
             rawValueInput = selectedPoint?.let { formatRawValueInput(it) }.orEmpty(),
+            simulationRunning = false,
             editingExistingUserMeter = false,
             draftReadOnly = false,
             selectedEditableUserModelId = null,
@@ -843,17 +887,64 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     override fun onCleared() {
+        simulationJob?.cancel()
         usbSerialConnectionManager.release()
         super.onCleared()
     }
 
     private companion object {
         private const val REMOVED_BACKUP_CT_EDITABLE_MODEL_ID = "backup-ct-editable"
+        private const val SIMULATION_TICK_MS = 1_000L
         val SUPPORTED_BAUD_RATES = listOf(1200, 2400, 4800, 9600, 19200, 115200)
     }
 
     private fun parityLabel(value: Int): String {
         return SerialParity.fromProfileValue(value).label
+    }
+
+    private fun applySimulationTick() {
+        val points = repository.getAllPoints()
+        if (points.isEmpty()) return
+
+        val displayValues = simulationEngine.tick(points)
+        points.forEach { point ->
+            val displayValue = displayValues[point.address] ?: return@forEach
+            repository.setRawValue(point.address, displayValueToRawValue(point, displayValue))
+        }
+
+        refreshUiState(
+            selectedPointIndex = _uiState.value.selectedPointIndex,
+            simulationRunning = simulationJob != null
+        )
+    }
+
+    private fun syncSimulationSeed() {
+        simulationEngine.reset(
+            points = repository.getAllPoints(),
+            displayValues = currentDisplayValues()
+        )
+    }
+
+    private fun currentDisplayValues(): Map<Int, Double> {
+        return repository.getAllPoints().associate { point ->
+            point.address to point.displayValue(repository.requireRawValue(point.address))
+        }
+    }
+
+    private fun displayValueToRawValue(point: MeterPoint, displayValue: Double): Int {
+        val scaledValue = if (point.gain <= 1.0) displayValue else displayValue * point.gain
+
+        return when (point.dataType) {
+            DataType.FLOAT -> scaledValue.toFloat().toRawBits()
+            DataType.INT -> {
+                val rounded = scaledValue.roundToInt()
+                if (point.registerCount == 1) {
+                    rounded.coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt())
+                } else {
+                    rounded
+                }
+            }
+        }
     }
 
 }
@@ -876,6 +967,7 @@ data class MainUiState(
     val selectedPointIndex: Int,
     val selectedPoint: MeterValueSnapshot?,
     val rawValueInput: String,
+    val simulationRunning: Boolean,
     val editingExistingUserMeter: Boolean,
     val draftReadOnly: Boolean,
     val selectedEditableUserModelId: String?,
