@@ -22,6 +22,7 @@ import com.example.meterdemo.usb.UsbDeviceScanner
 import com.example.meterdemo.usb.UsbDeviceSummary
 import com.example.meterdemo.usb.UsbSerialConnectionManager
 import com.example.meterdemo.usb.UsbSerialDeviceSummary
+import com.example.meterdemo.usb.UsbRequestFrameAssembler
 import com.example.meterdemo.usb.UsbSerialScanner
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -38,7 +39,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val persistence = MeterPersistence(application)
     private val usbDeviceScanner = UsbDeviceScanner(application)
     private val usbSerialScanner = UsbSerialScanner(application)
-    private val usbReceiveBuffer = mutableListOf<Byte>()
+    private val usbRequestFrameAssembler = UsbRequestFrameAssembler()
     private val usbSerialConnectionManager = UsbSerialConnectionManager(
         context = application,
         listener = object : UsbSerialConnectionManager.Listener {
@@ -68,7 +69,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 if (deviceName != null) {
                     logger.info("USB serial disconnected: $deviceName ($reason)")
                 }
-                usbReceiveBuffer.clear()
+                usbRequestFrameAssembler.clear()
                 refreshUiState(
                     selectedPointIndex = _uiState.value.selectedPointIndex,
                     usbConnectionStatus = reason,
@@ -818,19 +819,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun appendUsbData(data: ByteArray) {
-        usbReceiveBuffer.addAll(data.toList())
+        val assemblyResult = usbRequestFrameAssembler.append(
+            data = data,
+            expectedSlaveId = repository.getSlaveId(),
+            allowedFunctionCodes = setOf(0x03, 0x04)
+        )
 
-        while (usbReceiveBuffer.size >= USB_REQUEST_FRAME_SIZE) {
-            val frame = usbReceiveBuffer.take(USB_REQUEST_FRAME_SIZE).toByteArray()
-            usbReceiveBuffer.subList(0, USB_REQUEST_FRAME_SIZE).clear()
+        if (assemblyResult.droppedNoise.isNotEmpty()) {
+            logger.info("Dropped USB noise: ${ModbusFrameParser.toHexString(assemblyResult.droppedNoise)}")
+        }
 
+        assemblyResult.frames.forEach { frame ->
             val response = engine.handleRequest(frame)
             if (response == null) {
-                logger.error("USB request was not handled")
-                continue
-            }
-
-            if (usbSerialConnectionManager.write(response)) {
+                logger.error("USB request was not handled: ${ModbusFrameParser.toHexString(frame)}")
+            } else if (usbSerialConnectionManager.write(response)) {
                 logger.tx(ModbusFrameParser.toHexString(response), "USB TX")
             }
         }
@@ -842,7 +845,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private companion object {
-        const val USB_REQUEST_FRAME_SIZE = 8
         val SUPPORTED_BAUD_RATES = listOf(1200, 2400, 4800, 9600, 19200, 115200)
     }
 
