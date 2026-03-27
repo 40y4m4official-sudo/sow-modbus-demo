@@ -4,18 +4,23 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -23,10 +28,15 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.meterdemo.meter.model.DataType
 import com.example.meterdemo.viewmodel.MainUiState
 
@@ -54,13 +64,13 @@ fun MeterValuesScreen(
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column {
-                Text(
+            Column(modifier = Modifier.weight(1f)) {
+                AdaptiveProfileTitle(
                     text = uiState.profileName,
-                    style = MaterialTheme.typography.titleLarge
+                    modifier = Modifier.fillMaxWidth()
                 )
                 Text(
                     text = "Slave ID ${uiState.slaveId}",
@@ -68,8 +78,14 @@ fun MeterValuesScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            OutlinedButton(onClick = onOpenSettings) {
-                Text("Settings")
+            HeaderIconButton(
+                onClick = onOpenSettings,
+                contentDescription = "Settings"
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Settings,
+                    contentDescription = null
+                )
             }
         }
 
@@ -80,7 +96,14 @@ fun MeterValuesScreen(
                 .fillMaxWidth()
                 .weight(1f)
                 .clickable { onNext() },
-            shape = RoundedCornerShape(28.dp)
+            shape = RoundedCornerShape(28.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = if (uiState.simulationRunning) {
+                    Color(0xFFE3F1EC)
+                } else {
+                    MaterialTheme.colorScheme.surfaceContainerLow
+                }
+            )
         ) {
             Box(
                 modifier = Modifier
@@ -160,7 +183,11 @@ fun MeterValuesScreen(
                 Text(
                     text = if (uiState.simulationRunning) "Auto simulation: Running" else "Auto simulation: Stopped",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = if (uiState.simulationRunning) {
+                        Color(0xFF2F6B57)
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    }
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
@@ -215,4 +242,33 @@ fun MeterValuesScreen(
             }
         }
     }
+}
+
+@Composable
+private fun AdaptiveProfileTitle(
+    text: String,
+    modifier: Modifier = Modifier
+) {
+    BoxWithConstraints(modifier = modifier) {
+        val width = maxWidth.value
+        val fontSize = when {
+            text.length > 24 || width < 220f -> 18.sp
+            text.length > 18 || width < 280f -> 22.sp
+            else -> 28.sp
+        }
+
+        Text(
+            text = text,
+            style = adaptiveTitleStyle(fontSize),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+private fun adaptiveTitleStyle(fontSize: TextUnit): TextStyle {
+    return TextStyle(
+        fontSize = fontSize,
+        fontWeight = FontWeight.SemiBold
+    )
 }

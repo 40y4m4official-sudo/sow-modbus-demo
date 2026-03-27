@@ -64,8 +64,7 @@ fun SettingsScreen(
     ) {
         ScreenHeader(
             title = "Settings",
-            trailingText = "Back",
-            onTrailingClick = onBack
+            onBack = onBack
         )
 
         Spacer(modifier = Modifier.height(20.dp))

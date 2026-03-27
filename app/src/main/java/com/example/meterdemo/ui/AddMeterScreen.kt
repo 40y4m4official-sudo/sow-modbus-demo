@@ -88,8 +88,7 @@ fun AddMeterScreen(
     ) {
         ScreenHeader(
             title = if (isReadOnly) "Preset Registers" else if (isEditing) "Register Settings" else "Add Meter",
-            trailingText = "Back",
-            onTrailingClick = onBack
+            onBack = onBack
         )
 
         Spacer(modifier = Modifier.height(20.dp))
