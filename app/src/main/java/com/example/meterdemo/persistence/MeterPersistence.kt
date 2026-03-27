@@ -4,6 +4,7 @@ import android.content.Context
 import com.example.meterdemo.meter.model.DataType
 import com.example.meterdemo.meter.model.MeterPoint
 import com.example.meterdemo.meter.model.MeterProfile
+import com.example.meterdemo.meter.model.SignalType
 import com.example.meterdemo.meter.model.WordByteOrder
 import org.json.JSONArray
 import org.json.JSONObject
@@ -82,6 +83,7 @@ class MeterPersistence(context: Context) {
                             .put("registerCount", point.registerCount)
                             .put("gain", point.gain)
                             .put("dataType", point.dataType.name)
+                            .put("signalType", point.signalType.name)
                             .put("wordByteOrder", point.wordByteOrder.name)
                             .put("unit", point.unit)
                             .put("initialRawValue", point.initialRawValue)
@@ -104,6 +106,9 @@ class MeterPersistence(context: Context) {
                         dataType = DataType.fromStoredName(
                             pointJson.optString("dataType", DataType.INT.name),
                             pointJson.optInt("registerCount", 1)
+                        ),
+                        signalType = SignalType.fromStoredName(
+                            pointJson.optString("signalType", SignalType.CUSTOM.name)
                         ),
                         wordByteOrder = WordByteOrder.valueOf(
                             pointJson.optString("wordByteOrder", WordByteOrder.MSB_MSB.name)

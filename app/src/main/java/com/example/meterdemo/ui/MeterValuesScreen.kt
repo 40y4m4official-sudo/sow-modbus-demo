@@ -39,7 +39,9 @@ fun MeterValuesScreen(
     onRawValueChange: (String) -> Unit,
     onApplyValue: () -> Unit,
     onResetValues: () -> Unit,
-    onSimulateRead: () -> Unit
+    onSimulateRead: () -> Unit,
+    onStartSimulation: () -> Unit,
+    onStopSimulation: () -> Unit
 ) {
     val selectedPoint = uiState.selectedPoint
 
@@ -154,6 +156,12 @@ fun MeterValuesScreen(
                     text = "Demo Value",
                     style = MaterialTheme.typography.titleMedium
                 )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = if (uiState.simulationRunning) "Auto simulation: Running" else "Auto simulation: Stopped",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
                     value = uiState.rawValueInput,
@@ -174,24 +182,35 @@ fun MeterValuesScreen(
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Button(
+                        onClick = if (uiState.simulationRunning) onStopSimulation else onStartSimulation,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(if (uiState.simulationRunning) "Stop Auto" else "Start Auto")
+                    }
+                    Button(
                         onClick = onApplyValue,
                         modifier = Modifier.weight(1f)
                     ) {
                         Text("Apply")
                     }
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
                     OutlinedButton(
                         onClick = onSimulateRead,
                         modifier = Modifier.weight(1f)
                     ) {
                         Text("Read 03H")
                     }
-                }
-                Spacer(modifier = Modifier.height(12.dp))
-                OutlinedButton(
-                    onClick = onResetValues,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Reset All")
+                    OutlinedButton(
+                        onClick = onResetValues,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Reset All")
+                    }
                 }
             }
         }
