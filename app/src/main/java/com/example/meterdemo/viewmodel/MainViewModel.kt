@@ -1,6 +1,7 @@
 package com.example.meterdemo.viewmodel
 
 import android.app.Application
+import android.os.SystemClock
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.meterdemo.logging.CommCategory
@@ -49,6 +50,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val usbRequestFrameAssembler = UsbRequestFrameAssembler()
     private val simulationEngine = MeterSimulationEngine()
     private var simulationJob: Job? = null
+    private var lastSimulationTickElapsedRealtime: Long? = null
     private val usbSerialConnectionManager = UsbSerialConnectionManager(
         context = application,
         listener = object : UsbSerialConnectionManager.Listener {
@@ -199,6 +201,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         if (simulationJob != null) return
 
         syncSimulationSeed()
+        lastSimulationTickElapsedRealtime = SystemClock.elapsedRealtime()
         logger.info("Started automatic meter simulation")
         refreshUiState(
             selectedPointIndex = _uiState.value.selectedPointIndex,
@@ -216,6 +219,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun stopSimulation() {
         simulationJob?.cancel()
         simulationJob = null
+        lastSimulationTickElapsedRealtime = null
         logger.info("Stopped automatic meter simulation")
         refreshUiState(
             selectedPointIndex = _uiState.value.selectedPointIndex,
@@ -888,6 +892,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     override fun onCleared() {
         simulationJob?.cancel()
+        lastSimulationTickElapsedRealtime = null
         usbSerialConnectionManager.release()
         super.onCleared()
     }
@@ -906,7 +911,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val points = repository.getAllPoints()
         if (points.isEmpty()) return
 
-        val displayValues = simulationEngine.tick(points)
+        val now = SystemClock.elapsedRealtime()
+        val previous = lastSimulationTickElapsedRealtime ?: now
+        lastSimulationTickElapsedRealtime = now
+        val elapsedSeconds = ((now - previous).coerceAtLeast(0L).toDouble() / 1000.0).coerceIn(0.0, 5.0)
+
+        val displayValues = simulationEngine.tick(points, elapsedSeconds)
         points.forEach { point ->
             val displayValue = displayValues[point.address] ?: return@forEach
             repository.setRawValue(point.address, displayValueToRawValue(point, displayValue))

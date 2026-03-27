@@ -58,7 +58,7 @@ class MeterSimulationEngine(
         }
     }
 
-    fun tick(points: List<MeterPoint>): Map<Int, Double> {
+    fun tick(points: List<MeterPoint>, elapsedSeconds: Double): Map<Int, Double> {
         val updatedValues = mutableMapOf<Int, Double>()
 
         points.filter { it.isVoltagePoint() }.forEach { point ->
@@ -174,7 +174,7 @@ class MeterSimulationEngine(
             updatedValues[point.address] = value
         }
 
-        val hoursPerTick = 1.0 / 3600.0
+        val hoursPerTick = (elapsedSeconds.coerceAtLeast(0.0)) / 3600.0
         val activeEnergyDelta = activePower * hoursPerTick
         val reactiveEnergyDelta = abs(reactivePower) * hoursPerTick
 
@@ -318,7 +318,7 @@ class MeterSimulationEngine(
 
     private fun MeterPoint.isTotalEnergyPoint(): Boolean {
         val upperName = name.uppercase()
-        return upperName.contains("TOTAL")
+        return upperName.contains("TOTAL") && !isForwardEnergyPoint() && !isReverseEnergyPoint()
     }
 
     private fun phaseKey(name: String): String {
