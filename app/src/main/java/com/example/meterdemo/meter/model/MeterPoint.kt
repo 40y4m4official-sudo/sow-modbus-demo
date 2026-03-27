@@ -11,7 +11,8 @@ data class MeterPoint(
     val dataType: DataType,
     val unit: String = "",
     val initialRawValue: Int,
-    val wordByteOrder: WordByteOrder = WordByteOrder.MSB_MSB
+    val wordByteOrder: WordByteOrder = WordByteOrder.MSB_MSB,
+    val signalType: SignalType = SignalType.CUSTOM
 ) {
     private val displayScale: Int?
         get() = when {
@@ -58,7 +59,9 @@ data class MeterPoint(
     }
 
     private fun isPowerFactorPoint(): Boolean {
-        return name.contains("力率") || name.contains("Power Factor", ignoreCase = true)
+        return signalType == SignalType.POWER_FACTOR ||
+            name.contains("力率") ||
+            name.contains("Power Factor", ignoreCase = true)
     }
 
     companion object {

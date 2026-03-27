@@ -1,6 +1,7 @@
 package com.example.meterdemo.meter.simulation
 
 import com.example.meterdemo.meter.model.MeterPoint
+import com.example.meterdemo.meter.model.SignalType
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
@@ -26,7 +27,7 @@ class MeterSimulationEngine(
             val displayValue = displayValues[point.address] ?: point.displayValue(point.initialRawValue)
 
             when {
-                point.isVoltagePoint() -> {
+                point.signalType.isVoltageType() -> {
                     val span = max(abs(displayValue) * 0.10, 1.0)
                     voltageStates[point.address] = VoltageState(
                         currentValue = displayValue,
@@ -35,14 +36,14 @@ class MeterSimulationEngine(
                     )
                 }
 
-                point.isCurrentPoint() -> {
+                point.signalType.isCurrentType() -> {
                     currentStates[point.address] = CurrentState(
                         currentValue = displayValue,
                         ticksUntilNextStep = nextStepInterval()
                     )
                 }
 
-                point.isPowerFactorPoint() -> {
+                point.signalType == SignalType.POWER_FACTOR -> {
                     powerFactorStates[point.address] = PowerFactorState(
                         baseValue = displayValue.coerceIn(-0.999, 0.999),
                         currentValue = displayValue.coerceIn(-0.999, 0.999),
@@ -51,7 +52,7 @@ class MeterSimulationEngine(
                     )
                 }
 
-                point.isEnergyPoint() -> {
+                point.signalType.isEnergyType() -> {
                     energyStates[point.address] = max(0.0, displayValue)
                 }
             }
@@ -61,7 +62,7 @@ class MeterSimulationEngine(
     fun tick(points: List<MeterPoint>, elapsedSeconds: Double): Map<Int, Double> {
         val updatedValues = mutableMapOf<Int, Double>()
 
-        points.filter { it.isVoltagePoint() }.forEach { point ->
+        points.filter { it.signalType.isVoltageType() }.forEach { point ->
             val state = voltageStates.getOrPut(point.address) {
                 val initial = point.displayValue(point.initialRawValue)
                 val span = max(abs(initial) * 0.10, 1.0)
@@ -74,7 +75,7 @@ class MeterSimulationEngine(
             updatedValues[point.address] = state.currentValue
         }
 
-        points.filter { it.isCurrentPoint() }.forEach { point ->
+        points.filter { it.signalType.isCurrentType() }.forEach { point ->
             val state = currentStates.getOrPut(point.address) {
                 CurrentState(point.displayValue(point.initialRawValue), nextStepInterval())
             }
@@ -91,7 +92,7 @@ class MeterSimulationEngine(
             updatedValues[point.address] = state.currentValue
         }
 
-        points.filter { it.isPowerFactorPoint() }.forEach { point ->
+        points.filter { it.signalType == SignalType.POWER_FACTOR }.forEach { point ->
             val state = powerFactorStates.getOrPut(point.address) {
                 val initial = point.displayValue(point.initialRawValue).coerceIn(-0.999, 0.999)
                 PowerFactorState(initial, initial, 0, nextBurstInterval())
@@ -116,19 +117,19 @@ class MeterSimulationEngine(
         }
 
         val phaseVoltages = points
-            .filter { it.isPhaseVoltagePoint() }
-            .associate { point -> phaseKey(point.name) to (updatedValues[point.address] ?: point.displayValue(point.initialRawValue)) }
+            .filter { it.signalType.isPhaseVoltageType() }
+            .associate { point -> phaseKey(point.signalType) to (updatedValues[point.address] ?: point.displayValue(point.initialRawValue)) }
 
         val lineVoltages = points
-            .filter { it.isLineVoltagePoint() }
+            .filter { it.signalType.isLineVoltageType() }
             .associate { point -> point.address to (updatedValues[point.address] ?: point.displayValue(point.initialRawValue)) }
 
         val phaseCurrents = points
-            .filter { it.isCurrentPoint() }
-            .associate { point -> phaseKey(point.name) to (updatedValues[point.address] ?: point.displayValue(point.initialRawValue)) }
+            .filter { it.signalType.isCurrentType() }
+            .associate { point -> phaseKey(point.signalType) to (updatedValues[point.address] ?: point.displayValue(point.initialRawValue)) }
 
         val totalPowerFactor = points
-            .firstOrNull { it.isPowerFactorPoint() }
+            .firstOrNull { it.signalType == SignalType.POWER_FACTOR }
             ?.let { updatedValues[it.address] ?: it.displayValue(it.initialRawValue) }
             ?.coerceIn(-0.999, 0.999)
             ?: 0.95
@@ -148,26 +149,26 @@ class MeterSimulationEngine(
         val totalCurrentForShare = if (totalCurrentMagnitude <= 0.0001) 1.0 else totalCurrentMagnitude
         val phaseShares = phaseCurrents.mapValues { (_, current) -> abs(current) / totalCurrentForShare }
 
-        points.filter { it.isPowerPoint() }.forEach { point ->
+        points.filter { it.signalType.isPowerType() }.forEach { point ->
             val value = when {
-                point.isActivePowerPoint() && point.isPhasePoint() -> {
-                    val share = phaseShares[phaseKey(point.name)] ?: 0.0
+                point.signalType.isActivePowerType() && point.signalType.isPhasePowerType() -> {
+                    val share = phaseShares[phaseKey(point.signalType)] ?: 0.0
                     activePower * share
                 }
 
-                point.isActivePowerPoint() -> activePower
-                point.isReactivePowerPoint() && point.isPhasePoint() -> {
-                    val share = phaseShares[phaseKey(point.name)] ?: 0.0
+                point.signalType.isActivePowerType() -> activePower
+                point.signalType.isReactivePowerType() && point.signalType.isPhasePowerType() -> {
+                    val share = phaseShares[phaseKey(point.signalType)] ?: 0.0
                     reactivePower * share
                 }
 
-                point.isReactivePowerPoint() -> reactivePower
-                point.isApparentPowerPoint() && point.isPhasePoint() -> {
-                    val share = phaseShares[phaseKey(point.name)] ?: 0.0
+                point.signalType.isReactivePowerType() -> reactivePower
+                point.signalType.isApparentPowerType() && point.signalType.isPhasePowerType() -> {
+                    val share = phaseShares[phaseKey(point.signalType)] ?: 0.0
                     apparentPower * share
                 }
 
-                point.isApparentPowerPoint() -> apparentPower
+                point.signalType.isApparentPowerType() -> apparentPower
                 else -> point.displayValue(point.initialRawValue)
             }
 
@@ -178,8 +179,8 @@ class MeterSimulationEngine(
         val activeEnergyDelta = activePower * hoursPerTick
         val reactiveEnergyDelta = abs(reactivePower) * hoursPerTick
 
-        val activeEnergyPoints = points.filter { it.unit == "kWh" }.sortedBy { it.address }
-        val reactiveEnergyPoints = points.filter { it.unit == "kVarh" }.sortedBy { it.address }
+        val activeEnergyPoints = points.filter { it.signalType.isActiveEnergyType() }.sortedBy { it.address }
+        val reactiveEnergyPoints = points.filter { it.signalType.isReactiveEnergyType() }.sortedBy { it.address }
 
         val activeAssignments = assignActiveEnergyRoles(activeEnergyPoints)
         val reactiveAssignments = assignReactiveEnergyRoles(reactiveEnergyPoints)
@@ -271,66 +272,89 @@ class MeterSimulationEngine(
 
     private fun nextBurstInterval(): Int = random.nextInt(15, 36)
 
-    private fun MeterPoint.isVoltagePoint(): Boolean = unit == "V"
-
-    private fun MeterPoint.isCurrentPoint(): Boolean = unit == "A"
-
-    private fun MeterPoint.isPowerFactorPoint(): Boolean {
-        return name.contains("Power Factor", ignoreCase = true) || name.contains("蜉帷紫")
-    }
-
-    private fun MeterPoint.isPowerPoint(): Boolean = unit == "kW" || unit == "kVar" || unit == "kVA"
-
-    private fun MeterPoint.isActivePowerPoint(): Boolean = unit == "kW"
-
-    private fun MeterPoint.isReactivePowerPoint(): Boolean = unit == "kVar"
-
-    private fun MeterPoint.isApparentPowerPoint(): Boolean = unit == "kVA"
-
-    private fun MeterPoint.isEnergyPoint(): Boolean = unit == "kWh" || unit == "kVarh"
-
-    private fun MeterPoint.isLineVoltagePoint(): Boolean {
-        val upperName = name.uppercase()
-        return unit == "V" && (upperName.contains("A-B") || upperName.contains("B-C") || upperName.contains("C-A"))
-    }
-
-    private fun MeterPoint.isPhaseVoltagePoint(): Boolean = isVoltagePoint() && !isLineVoltagePoint()
-
-    private fun MeterPoint.isPhasePoint(): Boolean {
-        val upperName = name.uppercase()
-        return upperName.startsWith("A ") ||
-            upperName.startsWith("B ") ||
-            upperName.startsWith("C ") ||
-            (upperName.startsWith("A") && !upperName.startsWith("A-") && !upperName.startsWith("ACTIVE") && !upperName.startsWith("APPARENT")) ||
-            upperName.startsWith("B-").not() && upperName.startsWith("B") ||
-            upperName.startsWith("C-").not() && upperName.startsWith("C")
-    }
-
     private fun MeterPoint.isForwardEnergyPoint(): Boolean {
-        val upperName = name.uppercase()
-        return upperName.contains("FORWARD") || upperName.contains("IMPORT")
+        return signalType == SignalType.FORWARD_ACTIVE_ENERGY_TOTAL ||
+            signalType == SignalType.FORWARD_REACTIVE_ENERGY_TOTAL
     }
 
     private fun MeterPoint.isReverseEnergyPoint(): Boolean {
-        val upperName = name.uppercase()
-        return upperName.contains("REVERSE") || upperName.contains("EXPORT")
+        return signalType == SignalType.REVERSE_ACTIVE_ENERGY_TOTAL ||
+            signalType == SignalType.REVERSE_REACTIVE_ENERGY_TOTAL
     }
 
     private fun MeterPoint.isTotalEnergyPoint(): Boolean {
-        val upperName = name.uppercase()
-        return upperName.contains("TOTAL") && !isForwardEnergyPoint() && !isReverseEnergyPoint()
+        return signalType == SignalType.TOTAL_ACTIVE_ENERGY ||
+            signalType == SignalType.TOTAL_REACTIVE_ENERGY
     }
 
-    private fun phaseKey(name: String): String {
-        val upperName = name.uppercase()
-        return when {
-            (upperName.startsWith("A") && !upperName.startsWith("A-") && !upperName.startsWith("ACTIVE") && !upperName.startsWith("APPARENT")) || upperName.contains("PHASE A") -> "A"
-            upperName.startsWith("B") || upperName.contains("PHASE B") -> "B"
-            upperName.startsWith("C") || upperName.contains("PHASE C") -> "C"
+    private fun phaseKey(signalType: SignalType): String {
+        return when (signalType) {
+            SignalType.PHASE_A_VOLTAGE,
+            SignalType.PHASE_A_CURRENT,
+            SignalType.PHASE_A_ACTIVE_POWER -> "A"
+            SignalType.PHASE_B_VOLTAGE,
+            SignalType.PHASE_B_CURRENT,
+            SignalType.PHASE_B_ACTIVE_POWER -> "B"
+            SignalType.PHASE_C_VOLTAGE,
+            SignalType.PHASE_C_CURRENT,
+            SignalType.PHASE_C_ACTIVE_POWER -> "C"
             else -> ""
         }
     }
 }
+
+private fun SignalType.isVoltageType(): Boolean = isPhaseVoltageType() || isLineVoltageType()
+
+private fun SignalType.isPhaseVoltageType(): Boolean = this in setOf(
+    SignalType.PHASE_A_VOLTAGE,
+    SignalType.PHASE_B_VOLTAGE,
+    SignalType.PHASE_C_VOLTAGE
+)
+
+private fun SignalType.isLineVoltageType(): Boolean = this in setOf(
+    SignalType.LINE_VOLTAGE_AB,
+    SignalType.LINE_VOLTAGE_BC,
+    SignalType.LINE_VOLTAGE_CA
+)
+
+private fun SignalType.isCurrentType(): Boolean = this in setOf(
+    SignalType.PHASE_A_CURRENT,
+    SignalType.PHASE_B_CURRENT,
+    SignalType.PHASE_C_CURRENT
+)
+
+private fun SignalType.isPowerType(): Boolean = isActivePowerType() || isReactivePowerType() || isApparentPowerType()
+
+private fun SignalType.isActivePowerType(): Boolean = this in setOf(
+    SignalType.ACTIVE_POWER_TOTAL,
+    SignalType.PHASE_A_ACTIVE_POWER,
+    SignalType.PHASE_B_ACTIVE_POWER,
+    SignalType.PHASE_C_ACTIVE_POWER
+)
+
+private fun SignalType.isReactivePowerType(): Boolean = this == SignalType.REACTIVE_POWER_TOTAL
+
+private fun SignalType.isApparentPowerType(): Boolean = this == SignalType.APPARENT_POWER_TOTAL
+
+private fun SignalType.isPhasePowerType(): Boolean = this in setOf(
+    SignalType.PHASE_A_ACTIVE_POWER,
+    SignalType.PHASE_B_ACTIVE_POWER,
+    SignalType.PHASE_C_ACTIVE_POWER
+)
+
+private fun SignalType.isEnergyType(): Boolean = isActiveEnergyType() || isReactiveEnergyType()
+
+private fun SignalType.isActiveEnergyType(): Boolean = this in setOf(
+    SignalType.TOTAL_ACTIVE_ENERGY,
+    SignalType.FORWARD_ACTIVE_ENERGY_TOTAL,
+    SignalType.REVERSE_ACTIVE_ENERGY_TOTAL
+)
+
+private fun SignalType.isReactiveEnergyType(): Boolean = this in setOf(
+    SignalType.TOTAL_REACTIVE_ENERGY,
+    SignalType.FORWARD_REACTIVE_ENERGY_TOTAL,
+    SignalType.REVERSE_REACTIVE_ENERGY_TOTAL
+)
 
 private data class VoltageState(
     var currentValue: Double,

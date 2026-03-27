@@ -1,33 +1,32 @@
 package com.example.meterdemo.meter.model
 
 data class StandardSignalTemplate(
-    val name: String,
-    val unit: String
+    val signalType: SignalType
 )
 
 object StandardSignalTemplates {
     val all: List<StandardSignalTemplate> = listOf(
-        StandardSignalTemplate("Phase A Voltage", "V"),
-        StandardSignalTemplate("Phase B Voltage", "V"),
-        StandardSignalTemplate("Phase C Voltage", "V"),
-        StandardSignalTemplate("Line Voltage A-B", "V"),
-        StandardSignalTemplate("Line Voltage B-C", "V"),
-        StandardSignalTemplate("Line Voltage C-A", "V"),
-        StandardSignalTemplate("Phase A Current", "A"),
-        StandardSignalTemplate("Phase B Current", "A"),
-        StandardSignalTemplate("Phase C Current", "A"),
-        StandardSignalTemplate("Active Power", "kW"),
-        StandardSignalTemplate("Phase A Active Power", "kW"),
-        StandardSignalTemplate("Phase B Active Power", "kW"),
-        StandardSignalTemplate("Phase C Active Power", "kW"),
-        StandardSignalTemplate("Reactive Power", "kVar"),
-        StandardSignalTemplate("Power Factor", ""),
-        StandardSignalTemplate("Apparent Power", "kVA"),
-        StandardSignalTemplate("Total Active Energy", "kWh"),
-        StandardSignalTemplate("Total Reactive Energy", "kVarh"),
-        StandardSignalTemplate("Import Active Energy Total", "kWh"),
-        StandardSignalTemplate("Import Reactive Energy Total", "kVarh"),
-        StandardSignalTemplate("Export Active Energy Total", "kWh"),
-        StandardSignalTemplate("Export Reactive Energy Total", "kVarh")
+        StandardSignalTemplate(SignalType.PHASE_A_VOLTAGE),
+        StandardSignalTemplate(SignalType.PHASE_B_VOLTAGE),
+        StandardSignalTemplate(SignalType.PHASE_C_VOLTAGE),
+        StandardSignalTemplate(SignalType.LINE_VOLTAGE_AB),
+        StandardSignalTemplate(SignalType.LINE_VOLTAGE_BC),
+        StandardSignalTemplate(SignalType.LINE_VOLTAGE_CA),
+        StandardSignalTemplate(SignalType.PHASE_A_CURRENT),
+        StandardSignalTemplate(SignalType.PHASE_B_CURRENT),
+        StandardSignalTemplate(SignalType.PHASE_C_CURRENT),
+        StandardSignalTemplate(SignalType.ACTIVE_POWER_TOTAL),
+        StandardSignalTemplate(SignalType.PHASE_A_ACTIVE_POWER),
+        StandardSignalTemplate(SignalType.PHASE_B_ACTIVE_POWER),
+        StandardSignalTemplate(SignalType.PHASE_C_ACTIVE_POWER),
+        StandardSignalTemplate(SignalType.REACTIVE_POWER_TOTAL),
+        StandardSignalTemplate(SignalType.POWER_FACTOR),
+        StandardSignalTemplate(SignalType.APPARENT_POWER_TOTAL),
+        StandardSignalTemplate(SignalType.TOTAL_ACTIVE_ENERGY),
+        StandardSignalTemplate(SignalType.TOTAL_REACTIVE_ENERGY),
+        StandardSignalTemplate(SignalType.FORWARD_ACTIVE_ENERGY_TOTAL),
+        StandardSignalTemplate(SignalType.FORWARD_REACTIVE_ENERGY_TOTAL),
+        StandardSignalTemplate(SignalType.REVERSE_ACTIVE_ENERGY_TOTAL),
+        StandardSignalTemplate(SignalType.REVERSE_REACTIVE_ENERGY_TOTAL)
     )
 }

@@ -11,6 +11,7 @@ import com.example.meterdemo.meter.model.DataType
 import com.example.meterdemo.meter.model.MeterPoint
 import com.example.meterdemo.meter.model.MeterProfile
 import com.example.meterdemo.meter.model.SerialParity
+import com.example.meterdemo.meter.model.SignalType
 import com.example.meterdemo.meter.model.StandardSignalTemplates
 import com.example.meterdemo.meter.model.WordByteOrder
 import com.example.meterdemo.meter.profiles.MeterProfiles
@@ -436,6 +437,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val nextIndex = state.editMeterDraft.registers.size + 1
         val updatedRegisters = state.editMeterDraft.registers + MeterRegisterDraft(
             name = "Register $nextIndex",
+            signalType = SignalType.CUSTOM,
+            isTemplateLocked = false,
             addressInput = "",
             registerCountInput = "1",
             gainInput = "1",
@@ -613,6 +616,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 registerCount = registerCount,
                 gain = gain,
                 dataType = register.dataType,
+                signalType = register.signalType,
                 wordByteOrder = register.wordByteOrder,
                 unit = register.unit,
                 initialRawValue = initialRawValue
@@ -751,6 +755,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             registers = points.map { point ->
                 MeterRegisterDraft(
                     name = point.name,
+                    signalType = point.signalType,
+                    isTemplateLocked = point.signalType != SignalType.CUSTOM,
                     addressInput = point.address.toString(),
                     registerCountInput = point.registerCount.toString(),
                     gainInput = formatGain(point.gain),
@@ -768,11 +774,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private fun standardRegisterDrafts(): List<MeterRegisterDraft> {
         return StandardSignalTemplates.all.map { template ->
             MeterRegisterDraft(
-                name = template.name,
+                name = template.signalType.label,
+                signalType = template.signalType,
+                isTemplateLocked = true,
                 addressInput = "",
                 registerCountInput = "1",
                 gainInput = "1",
-                unit = template.unit,
+                unit = template.signalType.defaultUnit,
                 initialRawValueInput = "0",
                 dataType = DataType.INT,
                 wordByteOrder = WordByteOrder.MSB_MSB
@@ -1001,6 +1009,8 @@ data class MeterEditorDraft(
 
 data class MeterRegisterDraft(
     val name: String,
+    val signalType: SignalType = SignalType.CUSTOM,
+    val isTemplateLocked: Boolean = false,
     val addressInput: String,
     val registerCountInput: String,
     val gainInput: String,

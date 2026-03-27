@@ -198,13 +198,20 @@ fun AddMeterScreen(
                             style = MaterialTheme.typography.titleMedium
                         )
                         Spacer(modifier = Modifier.height(12.dp))
-                        OutlinedTextField(
-                            value = register.name,
-                            onValueChange = { onRegisterNameChange(index, it) },
-                            label = { Text("Name") },
-                            modifier = Modifier.fillMaxWidth(),
-                            enabled = !isReadOnly
-                        )
+                        if (register.isTemplateLocked) {
+                            Text(
+                                text = register.name,
+                                style = MaterialTheme.typography.titleSmall
+                            )
+                        } else {
+                            OutlinedTextField(
+                                value = register.name,
+                                onValueChange = { onRegisterNameChange(index, it) },
+                                label = { Text("Name") },
+                                modifier = Modifier.fillMaxWidth(),
+                                enabled = !isReadOnly
+                            )
+                        }
 
                         Spacer(modifier = Modifier.height(12.dp))
                         Row(modifier = Modifier.fillMaxWidth()) {
