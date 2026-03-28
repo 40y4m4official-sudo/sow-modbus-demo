@@ -44,6 +44,7 @@ fun SettingsScreen(
     onOpenEditMeter: () -> Unit,
     onSlaveIdChange: (String) -> Unit,
     onApplySlaveId: () -> Unit,
+    onToggleMainViewMode: () -> Unit,
     onOpenLogs: () -> Unit,
     onRefreshUsbDevices: () -> Unit,
     onRequestUsbPermission: (String) -> Unit,
@@ -165,6 +166,13 @@ fun SettingsScreen(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text("Apply Slave Address")
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    OutlinedButton(
+                        onClick = onToggleMainViewMode,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Main View: ${uiState.mainViewMode.label}")
                     }
                 }
             }
