@@ -859,6 +859,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         userProfiles.clear()
         userProfiles.addAll(persisted.userProfiles)
         userProfiles.removeAll { it.modelId == REMOVED_BACKUP_CT_EDITABLE_MODEL_ID }
+        userProfiles.removeAll { it.modelId == REMOVED_MITSUBISHI_EDITABLE_MODEL_ID }
 
         val profileToLoad = allProfiles().firstOrNull { it.modelId == persisted.selectedProfileModelId }
             ?: repository.getProfile()
@@ -872,11 +873,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun ensureBuiltinEditableProfiles() {
-        ensureEditableClone(
-            source = builtinProfiles.firstOrNull { it.modelId == "mitsubishi-me110ssr-mb" },
-            editableModelId = "mitsubishi-me110ssr-mb-editable",
-            editableDisplayName = "Mitsubishi-ME110SSR-MB Editable"
-        )
         ensureEditableClone(
             source = builtinProfiles.firstOrNull { it.modelId == "dtsu666-hw" },
             editableModelId = "dtsu666-hw-editable",
@@ -945,6 +941,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private companion object {
         private const val REMOVED_BACKUP_CT_EDITABLE_MODEL_ID = "backup-ct-editable"
+        private const val REMOVED_MITSUBISHI_EDITABLE_MODEL_ID = "mitsubishi-me110ssr-mb-editable"
         private const val SIMULATION_TICK_MS = 1_000L
         val SUPPORTED_BAUD_RATES = listOf(1200, 2400, 4800, 9600, 19200, 115200)
     }
