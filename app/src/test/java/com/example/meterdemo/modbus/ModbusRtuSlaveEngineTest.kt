@@ -482,6 +482,44 @@ class ModbusRtuSlaveEngineTest {
         assertArrayEquals(expected, response)
     }
 
+    @Test
+    fun handleRequest_gapWithinActiveRange_returnsZeroFilledRegisters() {
+        val request = requestFrame(
+            slaveId = 2,
+            functionCode = 0x03,
+            startAddress = 771,
+            quantity = 7
+        )
+
+        val response = engine.handleRequest(request)
+
+        requireNotNull(response)
+
+        val expected = ModbusCrc.appendCrc(
+            byteArrayOf(
+                0x02,
+                0x03,
+                0x0E,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+                0x19,
+                0xC8.toByte()
+            )
+        )
+
+        assertArrayEquals(expected, response)
+    }
+
     private fun requestFrame(
         slaveId: Int,
         functionCode: Int,

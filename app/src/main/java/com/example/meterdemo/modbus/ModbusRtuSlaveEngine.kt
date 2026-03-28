@@ -36,18 +36,12 @@ class ModbusRtuSlaveEngine(
             )
         }
 
-        val points = meterRepository.findPointsForRead(request.startAddress, request.quantity)
+        val dataBytes = buildResponseData(request.startAddress, request.quantity)
             ?: return buildExceptionResponse(
                 slaveId = request.slaveId,
                 functionCode = request.functionCode,
                 exceptionCode = ModbusExceptionCode.ILLEGAL_DATA_ADDRESS
             )
-
-        val dataBytes = buildList<Byte> {
-            points.forEach { point ->
-                addAll(encodePointValue(point, meterRepository.requireRawValue(point.address)).toList())
-            }
-        }.toByteArray()
 
         return buildReadRegistersResponse(
             slaveId = request.slaveId,
@@ -116,6 +110,38 @@ class ModbusRtuSlaveEngine(
         }
 
         return words.flatMap { it.asList() }.toByteArray()
+    }
+
+    private fun buildResponseData(
+        startAddress: Int,
+        quantity: Int
+    ): ByteArray? {
+        val bytes = mutableListOf<Byte>()
+        var consumedRegisters = 0
+        var currentAddress = startAddress
+
+        while (consumedRegisters < quantity) {
+            val point = meterRepository.findPoint(currentAddress)
+            if (point != null) {
+                if (consumedRegisters + point.registerCount > quantity) {
+                    return null
+                }
+                bytes += encodePointValue(point, meterRepository.requireRawValue(point.address)).toList()
+                consumedRegisters += point.registerCount
+                currentAddress += point.registerCount
+                continue
+            }
+
+            if (!meterRepository.isWithinActiveAddressRange(currentAddress)) {
+                return null
+            }
+
+            bytes += listOf(0x00.toByte(), 0x00.toByte())
+            consumedRegisters += 1
+            currentAddress += 1
+        }
+
+        return bytes.toByteArray()
     }
 
     private fun buildExceptionResponse(
