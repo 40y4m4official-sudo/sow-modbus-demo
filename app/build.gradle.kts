@@ -1,9 +1,11 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
 }
 
-val keystoreProperties = java.util.Properties().apply {
+val keystoreProperties = Properties().apply {
     val file = rootProject.file("keystore.properties")
     if (file.exists()) {
         file.inputStream().use { load(it) }
@@ -13,8 +15,9 @@ val keystoreProperties = java.util.Properties().apply {
 fun prop(name: String): String? {
     val localValue = keystoreProperties.getProperty(name)?.takeIf { it.isNotBlank() }
     if (localValue != null) return localValue
-    return (project.findProperty(name) as String?)?.takeIf { it.isNotBlank() }
-        ?: System.getenv(name)?.takeIf { it.isNotBlank() }
+    val gradleValue = project.findProperty(name) as? String
+    if (!gradleValue.isNullOrBlank()) return gradleValue
+    return System.getenv(name)?.takeIf { it.isNotBlank() }
 }
 
 android {
@@ -34,18 +37,18 @@ android {
     signingConfigs {
         create("release") {
             val storeFilePath = prop("RELEASE_STORE_FILE")
-            val storePassword = prop("RELEASE_STORE_PASSWORD")
+            val storePasswordValue = prop("RELEASE_STORE_PASSWORD")
             val keyAliasValue = prop("RELEASE_KEY_ALIAS")
             val keyPasswordValue = prop("RELEASE_KEY_PASSWORD")
 
             if (
                 storeFilePath != null &&
-                storePassword != null &&
+                storePasswordValue != null &&
                 keyAliasValue != null &&
                 keyPasswordValue != null
             ) {
                 storeFile = file(storeFilePath)
-                storePassword = storePassword
+                storePassword = storePasswordValue
                 keyAlias = keyAliasValue
                 keyPassword = keyPasswordValue
             }
