@@ -612,8 +612,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 reportDraftError("Register ${index + 1} FLOAT requires word count 2")
                 return null
             }
-            if (register.dataType == DataType.INT && registerCount == 1 && initialRawValue !in Short.MIN_VALUE..Short.MAX_VALUE) {
-                reportDraftError("Register ${index + 1} INT with word count 1 must be in range -32768..32767")
+            if (register.dataType == DataType.INT && registerCount == 1 && initialRawValue !in Short.MIN_VALUE..0xFFFF) {
+                reportDraftError("Register ${index + 1} INT with word count 1 must be in range -32768..65535")
                 return null
             }
 
@@ -829,7 +829,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             DataType.INT -> {
                 val roundedValue = scaledValue.roundToInt()
                 if (point.registerCount == 1) {
-                    roundedValue.takeIf { it in Short.MIN_VALUE..Short.MAX_VALUE }
+                    roundedValue.takeIf { it in Short.MIN_VALUE..0xFFFF }
                 } else {
                     roundedValue
                 }
@@ -992,7 +992,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             DataType.INT -> {
                 val rounded = scaledValue.roundToInt()
                 if (point.registerCount == 1) {
-                    rounded.coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt())
+                    rounded.coerceIn(Short.MIN_VALUE.toInt(), 0xFFFF)
                 } else {
                     rounded
                 }
