@@ -115,6 +115,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     init {
         restorePersistedState()
+        ensureBuiltinEditableProfiles()
         _uiState = MutableStateFlow(createUiState())
     }
 
@@ -868,6 +869,33 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         persisted.currentRawValues.forEach { (address, value) ->
             repository.setRawValue(address, value)
         }
+    }
+
+    private fun ensureBuiltinEditableProfiles() {
+        ensureEditableClone(
+            source = builtinProfiles.firstOrNull { it.modelId == "mitsubishi-me110ssr-mb" },
+            editableModelId = "mitsubishi-me110ssr-mb-editable",
+            editableDisplayName = "Mitsubishi-ME110SSR-MB Editable"
+        )
+        ensureEditableClone(
+            source = builtinProfiles.firstOrNull { it.modelId == "dtsu666-hw" },
+            editableModelId = "dtsu666-hw-editable",
+            editableDisplayName = "DTSU666-HW Editable"
+        )
+    }
+
+    private fun ensureEditableClone(
+        source: MeterProfile?,
+        editableModelId: String,
+        editableDisplayName: String
+    ) {
+        if (source == null) return
+        if (userProfiles.any { it.modelId == editableModelId }) return
+
+        userProfiles += source.copy(
+            modelId = editableModelId,
+            displayName = editableDisplayName
+        )
     }
 
     private fun parseHexString(input: String): ByteArray? {
