@@ -43,6 +43,7 @@ class MeterSimulationEngine(
                 point.signalType.isCurrentType() -> {
                     currentStates[point.address] = CurrentState(
                         currentValue = displayValue,
+                        targetValue = displayValue,
                         ticksUntilNextStep = nextStepInterval()
                     )
                 }
@@ -81,16 +82,36 @@ class MeterSimulationEngine(
 
         points.filter { it.signalType.isCurrentType() }.forEach { point ->
             val state = currentStates.getOrPut(point.address) {
-                CurrentState(point.displayValue(point.initialRawValue), nextStepInterval())
+                val initial = point.displayValue(point.initialRawValue)
+                CurrentState(
+                    currentValue = initial,
+                    targetValue = initial,
+                    ticksUntilNextStep = nextStepInterval()
+                )
             }
 
             if (state.ticksUntilNextStep <= 0) {
                 val baseMagnitude = max(abs(point.displayValue(point.initialRawValue)), 1.0)
+                val currentSign = when {
+                    state.currentValue > 0.0 -> 1.0
+                    state.currentValue < 0.0 -> -1.0
+                    else -> if (random.nextBoolean()) 1.0 else -1.0
+                }
+                val shouldCrossZero = random.nextDouble() < 0.28
+                val nextSign = if (shouldCrossZero) -currentSign else currentSign
                 val stepMagnitude = baseMagnitude * random.nextDouble(0.2, 1.8)
-                state.currentValue = stepMagnitude * if (random.nextBoolean()) 1.0 else -1.0
+                state.targetValue = stepMagnitude * nextSign
                 state.ticksUntilNextStep = nextStepInterval()
             } else {
                 state.ticksUntilNextStep -= 1
+            }
+
+            val delta = state.targetValue - state.currentValue
+            val smoothing = if (delta == 0.0) 0.0 else max(abs(delta) * 0.45, 0.05)
+            if (abs(delta) <= smoothing) {
+                state.currentValue = state.targetValue
+            } else {
+                state.currentValue += smoothing * kotlin.math.sign(delta)
             }
 
             updatedValues[point.address] = state.currentValue
@@ -378,6 +399,7 @@ private data class VoltageState(
 
 private data class CurrentState(
     var currentValue: Double,
+    var targetValue: Double,
     var ticksUntilNextStep: Int
 )
 
