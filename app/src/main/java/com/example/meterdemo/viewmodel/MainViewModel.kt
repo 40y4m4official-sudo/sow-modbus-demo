@@ -115,7 +115,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     init {
         restorePersistedState()
-        ensureBuiltinEditableProfiles()
         _uiState = MutableStateFlow(createUiState())
     }
 
@@ -859,6 +858,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         userProfiles.clear()
         userProfiles.addAll(persisted.userProfiles)
         userProfiles.removeAll { it.modelId == REMOVED_BACKUP_CT_EDITABLE_MODEL_ID }
+        userProfiles.removeAll { it.modelId == REMOVED_DTSU_EDITABLE_MODEL_ID }
         userProfiles.removeAll { it.modelId == REMOVED_MITSUBISHI_EDITABLE_MODEL_ID }
 
         val profileToLoad = allProfiles().firstOrNull { it.modelId == persisted.selectedProfileModelId }
@@ -870,28 +870,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         persisted.currentRawValues.forEach { (address, value) ->
             repository.setRawValue(address, value)
         }
-    }
-
-    private fun ensureBuiltinEditableProfiles() {
-        ensureEditableClone(
-            source = builtinProfiles.firstOrNull { it.modelId == "dtsu666-hw" },
-            editableModelId = "dtsu666-hw-editable",
-            editableDisplayName = "DTSU666-HW Editable"
-        )
-    }
-
-    private fun ensureEditableClone(
-        source: MeterProfile?,
-        editableModelId: String,
-        editableDisplayName: String
-    ) {
-        if (source == null) return
-        if (userProfiles.any { it.modelId == editableModelId }) return
-
-        userProfiles += source.copy(
-            modelId = editableModelId,
-            displayName = editableDisplayName
-        )
     }
 
     private fun parseHexString(input: String): ByteArray? {
@@ -941,6 +919,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private companion object {
         private const val REMOVED_BACKUP_CT_EDITABLE_MODEL_ID = "backup-ct-editable"
+        private const val REMOVED_DTSU_EDITABLE_MODEL_ID = "dtsu666-hw-editable"
         private const val REMOVED_MITSUBISHI_EDITABLE_MODEL_ID = "mitsubishi-me110ssr-mb-editable"
         private const val SIMULATION_TICK_MS = 1_000L
         val SUPPORTED_BAUD_RATES = listOf(1200, 2400, 4800, 9600, 19200, 115200)
