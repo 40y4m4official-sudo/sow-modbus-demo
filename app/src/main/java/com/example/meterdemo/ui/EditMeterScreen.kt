@@ -15,11 +15,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -79,27 +82,24 @@ fun EditMeterScreen(
             .padding(horizontal = 20.dp, vertical = 16.dp)
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Edit Meter",
-                    style = MaterialTheme.typography.headlineMedium
-                )
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(onClick = {
-                        deleteMode = !deleteMode
-                        selectedIds = emptySet()
-                    }) {
-                        Text("Delete")
-                    }
-                    OutlinedButton(onClick = onBack) {
-                        Text("Back")
+            ScreenHeader(
+                title = "Edit Meter",
+                onBack = onBack,
+                actions = {
+                    HeaderIconButton(
+                        onClick = {
+                            deleteMode = !deleteMode
+                            selectedIds = emptySet()
+                        },
+                        contentDescription = "Delete mode"
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Delete,
+                            contentDescription = null
+                        )
                     }
                 }
-            }
+            )
 
             Spacer(modifier = Modifier.height(12.dp))
 

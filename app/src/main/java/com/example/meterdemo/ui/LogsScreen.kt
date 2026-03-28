@@ -10,7 +10,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.DeleteSweep
+import androidx.compose.material.icons.outlined.FileUpload
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -43,8 +47,7 @@ fun LogsScreen(
     ) {
         ScreenHeader(
             title = "Communication Logs",
-            trailingText = "Back",
-            onTrailingClick = onBack
+            onBack = onBack
         )
 
         Row(
@@ -65,7 +68,7 @@ fun LogsScreen(
             ) {
                 Text("Summary")
             }
-            OutlinedButton(
+            HeaderIconButton(
                 onClick = {
                     val exportUri = LogExporter.exportLogs(context, logs)
                     val shareIntent = Intent(Intent.ACTION_SEND).apply {
@@ -76,12 +79,21 @@ fun LogsScreen(
                     }
                     context.startActivity(Intent.createChooser(shareIntent, "Export logs"))
                 },
-                enabled = logs.isNotEmpty()
+                contentDescription = "Export logs"
             ) {
-                Text("Export Logs")
+                Icon(
+                    imageVector = Icons.Outlined.FileUpload,
+                    contentDescription = null
+                )
             }
-            OutlinedButton(onClick = onClearLogs) {
-                Text("Clear Logs")
+            HeaderIconButton(
+                onClick = onClearLogs,
+                contentDescription = "Clear logs"
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.DeleteSweep,
+                    contentDescription = null
+                )
             }
         }
 

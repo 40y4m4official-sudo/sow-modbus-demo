@@ -52,6 +52,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val simulationEngine = MeterSimulationEngine()
     private var simulationJob: Job? = null
     private var lastSimulationTickElapsedRealtime: Long? = null
+    private var mainViewMode: MainViewMode = MainViewMode.CARD
     private val usbSerialConnectionManager = UsbSerialConnectionManager(
         context = application,
         listener = object : UsbSerialConnectionManager.Listener {
@@ -131,6 +132,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         refreshUiState(selectedPointIndex = previousIndex)
     }
 
+    fun selectPoint(index: Int) {
+        refreshUiState(selectedPointIndex = index)
+    }
+
     fun updateSelectedRawValue(text: String) {
         refreshUiState(rawValueInput = text)
     }
@@ -184,6 +189,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         refreshUiState(selectedPointIndex = state.selectedPointIndex)
     }
 
+    fun toggleMainViewMode() {
+        mainViewMode = mainViewMode.next()
+        persistState()
+        refreshUiState(selectedPointIndex = _uiState.value.selectedPointIndex)
+    }
+
     fun selectProfile(modelId: String) {
         val profile = allProfiles().firstOrNull { it.modelId == modelId }
         if (profile == null) {
@@ -226,11 +237,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             selectedPointIndex = _uiState.value.selectedPointIndex,
             simulationRunning = false
         )
-    }
-
-    fun refreshLogs() {
-        logger.info("Refreshed logs")
-        refreshUiState(selectedPointIndex = _uiState.value.selectedPointIndex)
     }
 
     fun refreshUsbDevices() {
@@ -682,6 +688,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             points = snapshots,
             selectedPointIndex = safeIndex,
             selectedPoint = selectedPoint,
+            mainViewMode = mainViewMode,
             rawValueInput = rawValueInput ?: selectedPoint?.let { formatRawValueInput(it) }.orEmpty(),
             simulationRunning = simulationRunning,
             editingExistingUserMeter = editingExistingUserMeter,
@@ -712,6 +719,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             points = snapshots,
             selectedPointIndex = 0,
             selectedPoint = selectedPoint,
+            mainViewMode = mainViewMode,
             rawValueInput = selectedPoint?.let { formatRawValueInput(it) }.orEmpty(),
             simulationRunning = false,
             editingExistingUserMeter = false,
@@ -839,7 +847,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 userProfiles = userProfiles.toList(),
                 selectedProfileModelId = repository.getProfile().modelId,
                 currentSlaveId = repository.getSlaveId(),
-                currentRawValues = repository.snapshot().associate { it.address to it.rawValue }
+                currentRawValues = repository.snapshot().associate { it.address to it.rawValue },
+                mainViewMode = mainViewMode
             )
         )
     }
@@ -855,6 +864,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         repository.loadProfile(profileToLoad)
 
         persisted.currentSlaveId?.let(repository::setSlaveId)
+        mainViewMode = persisted.mainViewMode
         persisted.currentRawValues.forEach { (address, value) ->
             repository.setRawValue(address, value)
         }
@@ -984,6 +994,7 @@ data class MainUiState(
     val points: List<MeterValueSnapshot>,
     val selectedPointIndex: Int,
     val selectedPoint: MeterValueSnapshot?,
+    val mainViewMode: MainViewMode,
     val rawValueInput: String,
     val simulationRunning: Boolean,
     val editingExistingUserMeter: Boolean,

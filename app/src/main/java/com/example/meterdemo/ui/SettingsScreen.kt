@@ -44,8 +44,8 @@ fun SettingsScreen(
     onOpenEditMeter: () -> Unit,
     onSlaveIdChange: (String) -> Unit,
     onApplySlaveId: () -> Unit,
+    onToggleMainViewMode: () -> Unit,
     onOpenLogs: () -> Unit,
-    onRefreshLogs: () -> Unit,
     onRefreshUsbDevices: () -> Unit,
     onRequestUsbPermission: (String) -> Unit,
     onConnectUsbDevice: (String) -> Unit,
@@ -64,8 +64,7 @@ fun SettingsScreen(
     ) {
         ScreenHeader(
             title = "Settings",
-            trailingText = "Back",
-            onTrailingClick = onBack
+            onBack = onBack
         )
 
         Spacer(modifier = Modifier.height(20.dp))
@@ -167,6 +166,13 @@ fun SettingsScreen(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text("Apply Slave Address")
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    OutlinedButton(
+                        onClick = onToggleMainViewMode,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Main View: ${uiState.mainViewMode.label}")
                     }
                 }
             }
@@ -324,15 +330,9 @@ fun SettingsScreen(
                     ) {
                         Button(
                             onClick = onOpenLogs,
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.fillMaxWidth()
                         ) {
                             Text("Open Logs")
-                        }
-                        OutlinedButton(
-                            onClick = onRefreshLogs,
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text("Refresh Logs")
                         }
                     }
                 }

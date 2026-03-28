@@ -27,6 +27,7 @@ fun MeterDemoApp(viewModel: MainViewModel) {
         Screen.Main -> MeterValuesScreen(
             uiState = uiState,
             onOpenSettings = { currentScreen = Screen.Settings },
+            onSelectPoint = viewModel::selectPoint,
             onPrevious = viewModel::previousPoint,
             onNext = viewModel::nextPoint,
             onRawValueChange = viewModel::updateSelectedRawValue,
@@ -45,8 +46,8 @@ fun MeterDemoApp(viewModel: MainViewModel) {
             onOpenEditMeter = { currentScreen = Screen.EditMeter },
             onSlaveIdChange = viewModel::updateSlaveIdInput,
             onApplySlaveId = viewModel::applySlaveId,
+            onToggleMainViewMode = viewModel::toggleMainViewMode,
             onOpenLogs = { currentScreen = Screen.Logs },
-            onRefreshLogs = viewModel::refreshLogs,
             onRefreshUsbDevices = viewModel::refreshUsbDevices,
             onRequestUsbPermission = viewModel::requestUsbSerialPermission,
             onConnectUsbDevice = viewModel::connectUsbSerial,

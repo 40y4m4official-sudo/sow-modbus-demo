@@ -40,8 +40,7 @@ fun LogSummaryScreen(
     ) {
         ScreenHeader(
             title = "Address Summary",
-            trailingText = "Back",
-            onTrailingClick = onBack
+            onBack = onBack
         )
 
         Text(

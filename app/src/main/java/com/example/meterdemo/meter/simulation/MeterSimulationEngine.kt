@@ -12,6 +12,10 @@ import kotlin.random.Random
 class MeterSimulationEngine(
     private val random: Random = Random.Default
 ) {
+    private companion object {
+        private const val SQRT_3 = 1.7320508075688772
+    }
+
     private val voltageStates = mutableMapOf<Int, VoltageState>()
     private val currentStates = mutableMapOf<Int, CurrentState>()
     private val powerFactorStates = mutableMapOf<Int, PowerFactorState>()
@@ -39,6 +43,7 @@ class MeterSimulationEngine(
                 point.signalType.isCurrentType() -> {
                     currentStates[point.address] = CurrentState(
                         currentValue = displayValue,
+                        targetValue = displayValue,
                         ticksUntilNextStep = nextStepInterval()
                     )
                 }
@@ -77,16 +82,36 @@ class MeterSimulationEngine(
 
         points.filter { it.signalType.isCurrentType() }.forEach { point ->
             val state = currentStates.getOrPut(point.address) {
-                CurrentState(point.displayValue(point.initialRawValue), nextStepInterval())
+                val initial = point.displayValue(point.initialRawValue)
+                CurrentState(
+                    currentValue = initial,
+                    targetValue = initial,
+                    ticksUntilNextStep = nextStepInterval()
+                )
             }
 
             if (state.ticksUntilNextStep <= 0) {
                 val baseMagnitude = max(abs(point.displayValue(point.initialRawValue)), 1.0)
+                val currentSign = when {
+                    state.currentValue > 0.0 -> 1.0
+                    state.currentValue < 0.0 -> -1.0
+                    else -> if (random.nextBoolean()) 1.0 else -1.0
+                }
+                val shouldCrossZero = random.nextDouble() < 0.28
+                val nextSign = if (shouldCrossZero) -currentSign else currentSign
                 val stepMagnitude = baseMagnitude * random.nextDouble(0.2, 1.8)
-                state.currentValue = stepMagnitude * if (random.nextBoolean()) 1.0 else -1.0
+                state.targetValue = stepMagnitude * nextSign
                 state.ticksUntilNextStep = nextStepInterval()
             } else {
                 state.ticksUntilNextStep -= 1
+            }
+
+            val delta = state.targetValue - state.currentValue
+            val smoothing = if (delta == 0.0) 0.0 else max(abs(delta) * 0.45, 0.05)
+            if (abs(delta) <= smoothing) {
+                state.currentValue = state.targetValue
+            } else {
+                state.currentValue += smoothing * kotlin.math.sign(delta)
             }
 
             updatedValues[point.address] = state.currentValue
@@ -139,35 +164,45 @@ class MeterSimulationEngine(
             lineVoltages.isNotEmpty() -> lineVoltages.values.average()
             else -> 0.0
         }
-        val signedTotalCurrent = phaseCurrents.values.sum()
-        val totalCurrentMagnitude = phaseCurrents.values.sumOf { abs(it) }
-        val apparentPower = (averageVoltage * totalCurrentMagnitude) / 1000.0
-        val activePower = apparentPower * totalPowerFactor * if (signedTotalCurrent == 0.0) 0.0 else sign(signedTotalCurrent)
-        val reactivePowerMagnitude = apparentPower * sqrt(max(0.0, 1.0 - (totalPowerFactor * totalPowerFactor)))
-        val reactivePower = reactivePowerMagnitude * if (activePower == 0.0) 0.0 else sign(activePower)
-
-        val totalCurrentForShare = if (totalCurrentMagnitude <= 0.0001) 1.0 else totalCurrentMagnitude
-        val phaseShares = phaseCurrents.mapValues { (_, current) -> abs(current) / totalCurrentForShare }
+        val averagePhaseEquivalentVoltage = when {
+            phaseVoltages.isNotEmpty() -> averageVoltage
+            lineVoltages.isNotEmpty() -> averageVoltage / SQRT_3
+            else -> 0.0
+        }
+        val inferredPhaseVoltages = when {
+            phaseVoltages.isNotEmpty() -> phaseVoltages
+            phaseCurrents.isNotEmpty() -> listOf("A", "B", "C").associateWith { averagePhaseEquivalentVoltage }
+            else -> emptyMap()
+        }
+        val phaseApparentPowers = listOf("A", "B", "C").associateWith { phase ->
+            val phaseVoltage = inferredPhaseVoltages[phase] ?: averagePhaseEquivalentVoltage
+            val phaseCurrent = phaseCurrents[phase] ?: 0.0
+            (phaseVoltage * abs(phaseCurrent)) / 1000.0
+        }
+        val phaseActivePowers = listOf("A", "B", "C").associateWith { phase ->
+            val current = phaseCurrents[phase] ?: 0.0
+            val signedFactor = if (current == 0.0) 0.0 else sign(current)
+            phaseApparentPowers.getValue(phase) * totalPowerFactor * signedFactor
+        }
+        val apparentPower = phaseApparentPowers.values.sum()
+        val activePower = phaseActivePowers.values.sum()
+        val phaseReactivePowers = listOf("A", "B", "C").associateWith { phase ->
+            val signedFactor = phaseActivePowers.getValue(phase).let { if (it == 0.0) 0.0 else sign(it) }
+            val reactiveMagnitude = phaseApparentPowers.getValue(phase) * sqrt(max(0.0, 1.0 - (totalPowerFactor * totalPowerFactor)))
+            reactiveMagnitude * signedFactor
+        }
+        val reactivePower = phaseReactivePowers.values.sum()
 
         points.filter { it.signalType.isPowerType() }.forEach { point ->
             val value = when {
-                point.signalType.isActivePowerType() && point.signalType.isPhasePowerType() -> {
-                    val share = phaseShares[phaseKey(point.signalType)] ?: 0.0
-                    activePower * share
-                }
-
+                point.signalType.isActivePowerType() && point.signalType.isPhasePowerType() ->
+                    phaseActivePowers[phaseKey(point.signalType)] ?: 0.0
                 point.signalType.isActivePowerType() -> activePower
-                point.signalType.isReactivePowerType() && point.signalType.isPhasePowerType() -> {
-                    val share = phaseShares[phaseKey(point.signalType)] ?: 0.0
-                    reactivePower * share
-                }
-
+                point.signalType.isReactivePowerType() && point.signalType.isPhasePowerType() ->
+                    phaseReactivePowers[phaseKey(point.signalType)] ?: 0.0
                 point.signalType.isReactivePowerType() -> reactivePower
-                point.signalType.isApparentPowerType() && point.signalType.isPhasePowerType() -> {
-                    val share = phaseShares[phaseKey(point.signalType)] ?: 0.0
-                    apparentPower * share
-                }
-
+                point.signalType.isApparentPowerType() && point.signalType.isPhasePowerType() ->
+                    phaseApparentPowers[phaseKey(point.signalType)] ?: 0.0
                 point.signalType.isApparentPowerType() -> apparentPower
                 else -> point.displayValue(point.initialRawValue)
             }
@@ -364,6 +399,7 @@ private data class VoltageState(
 
 private data class CurrentState(
     var currentValue: Double,
+    var targetValue: Double,
     var ticksUntilNextStep: Int
 )
 
