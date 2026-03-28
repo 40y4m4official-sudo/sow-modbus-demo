@@ -16,6 +16,10 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.ArrowForward
+import androidx.compose.material.icons.outlined.Pause
+import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -158,13 +162,19 @@ fun MeterValuesScreen(
                 onClick = onPrevious,
                 modifier = Modifier.weight(1f)
             ) {
-                Text("Prev")
+                Icon(
+                    imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                    contentDescription = "Previous"
+                )
             }
             Button(
                 onClick = onNext,
                 modifier = Modifier.weight(1f)
             ) {
-                Text("Next")
+                Icon(
+                    imageVector = Icons.AutoMirrored.Outlined.ArrowForward,
+                    contentDescription = "Next"
+                )
             }
         }
 
@@ -212,7 +222,14 @@ fun MeterValuesScreen(
                         onClick = if (uiState.simulationRunning) onStopSimulation else onStartSimulation,
                         modifier = Modifier.weight(1f)
                     ) {
-                        Text(if (uiState.simulationRunning) "Stop Auto" else "Start Auto")
+                        Icon(
+                            imageVector = if (uiState.simulationRunning) {
+                                Icons.Outlined.Pause
+                            } else {
+                                Icons.Outlined.PlayArrow
+                            },
+                            contentDescription = if (uiState.simulationRunning) "Stop auto simulation" else "Start auto simulation"
+                        )
                     }
                     Button(
                         onClick = onApplyValue,
