@@ -26,14 +26,14 @@ data class MeterPoint(
     fun decodedValue(rawValue: Int): Double {
         return when (dataType) {
             DataType.FLOAT -> Float.fromBits(rawValue).toDouble()
-            DataType.INT -> if (registerCount == 1) rawValue.toShort().toDouble() else rawValue.toDouble()
+            DataType.INT -> if (registerCount == 1) decodeSingleWordInt(rawValue) else rawValue.toDouble()
         }
     }
 
     fun rawInputValue(rawValue: Int): String {
         return when (dataType) {
             DataType.FLOAT -> Float.fromBits(rawValue).toString()
-            DataType.INT -> if (registerCount == 1) rawValue.toShort().toString() else rawValue.toString()
+            DataType.INT -> if (registerCount == 1) formatSingleWordInt(rawValue) else rawValue.toString()
         }
     }
 
@@ -62,6 +62,22 @@ data class MeterPoint(
         return signalType == SignalType.POWER_FACTOR ||
             name.contains("力率") ||
             name.contains("Power Factor", ignoreCase = true)
+    }
+
+    private fun decodeSingleWordInt(rawValue: Int): Double {
+        return if (rawValue < 0) {
+            rawValue.toShort().toDouble()
+        } else {
+            (rawValue and 0xFFFF).toDouble()
+        }
+    }
+
+    private fun formatSingleWordInt(rawValue: Int): String {
+        return if (rawValue < 0) {
+            rawValue.toShort().toString()
+        } else {
+            (rawValue and 0xFFFF).toString()
+        }
     }
 
     companion object {

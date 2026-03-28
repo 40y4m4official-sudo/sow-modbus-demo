@@ -5,10 +5,10 @@ import com.example.meterdemo.meter.model.MeterPoint
 import com.example.meterdemo.meter.model.MeterProfile
 import com.example.meterdemo.meter.model.SignalType
 
-object Dtsu666HwProfile {
+object YadaYds60_80Profile {
     val profile = MeterProfile(
-        modelId = "dtsu666-hw",
-        displayName = "DTSU666-HW",
+        modelId = "yada-yds60-80",
+        displayName = "YADA-YDS60-80",
         slaveId = 2,
         baudRate = 9600,
         dataBits = 8,

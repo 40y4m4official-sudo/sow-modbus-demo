@@ -9,6 +9,7 @@ class MeterRepository(
 ) {
     private var currentProfile: MeterProfile = initialProfile
     private var currentSlaveId: Int = initialProfile.slaveId
+    private var activeAddressRange: IntRange = IntRange.EMPTY
 
     private val rawValues: MutableMap<Int, Int> = linkedMapOf()
 
@@ -19,6 +20,14 @@ class MeterRepository(
     fun loadProfile(profile: MeterProfile) {
         currentProfile = profile
         currentSlaveId = profile.slaveId
+        activeAddressRange = profile.points
+            .takeIf { it.isNotEmpty() }
+            ?.let { points ->
+                val minAddress = points.minOf { it.address }
+                val maxAddress = points.maxOf { it.address + it.registerCount - 1 }
+                minAddress..maxAddress
+            }
+            ?: IntRange.EMPTY
         rawValues.clear()
         profile.points.forEach { point ->
             rawValues[point.address] = point.initialRawValue
@@ -41,25 +50,9 @@ class MeterRepository(
 
     fun findPoint(address: Int): MeterPoint? = currentProfile.findPoint(address)
 
-    fun findPointsForRead(startAddress: Int, quantity: Int): List<MeterPoint>? {
-        if (quantity <= 0) return null
+    fun isWithinActiveAddressRange(address: Int): Boolean = address in activeAddressRange
 
-        val result = mutableListOf<MeterPoint>()
-        var consumedRegisters = 0
-        var currentAddress = startAddress
-
-        while (consumedRegisters < quantity) {
-            val point = currentProfile.findPoint(currentAddress) ?: return null
-            if (consumedRegisters + point.registerCount > quantity) {
-                return null
-            }
-            result += point
-            consumedRegisters += point.registerCount
-            currentAddress += point.registerCount
-        }
-
-        return result
-    }
+    fun getActiveAddressRange(): IntRange = activeAddressRange
 
     fun hasAddress(address: Int): Boolean = rawValues.containsKey(address)
 
@@ -128,7 +121,11 @@ data class MeterValueSnapshot(
         get() {
             val displayValue = when (dataType) {
                 DataType.FLOAT -> Float.fromBits(rawValue).toDouble()
-                DataType.INT -> if (registerCount == 1) rawValue.toShort().toDouble() else rawValue.toDouble()
+                DataType.INT -> if (registerCount == 1) {
+                    if (rawValue < 0) rawValue.toShort().toDouble() else (rawValue and 0xFFFF).toDouble()
+                } else {
+                    rawValue.toDouble()
+                }
             }.let { decoded ->
                 if (gain <= 1.0) decoded else decoded / gain
             }
