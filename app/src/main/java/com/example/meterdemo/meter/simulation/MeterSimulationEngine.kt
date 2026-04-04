@@ -17,15 +17,17 @@ class MeterSimulationEngine(
     }
 
     private val voltageStates = mutableMapOf<Int, VoltageState>()
-    private val currentStates = mutableMapOf<Int, CurrentState>()
+    private var currentGroupState: CurrentGroupState? = null
     private val powerFactorStates = mutableMapOf<Int, PowerFactorState>()
     private val energyStates = mutableMapOf<Int, Double>()
 
     fun reset(points: List<MeterPoint>, displayValues: Map<Int, Double>) {
         voltageStates.clear()
-        currentStates.clear()
+        currentGroupState = null
         powerFactorStates.clear()
         energyStates.clear()
+
+        var initialCurrentBase: Double? = null
 
         points.forEach { point ->
             val displayValue = displayValues[point.address] ?: point.displayValue(point.initialRawValue)
@@ -41,11 +43,9 @@ class MeterSimulationEngine(
                 }
 
                 point.signalType.isCurrentType() -> {
-                    currentStates[point.address] = CurrentState(
-                        currentValue = displayValue,
-                        targetValue = displayValue,
-                        ticksUntilNextStep = nextStepInterval()
-                    )
+                    if (initialCurrentBase == null) {
+                        initialCurrentBase = displayValue
+                    }
                 }
 
                 point.signalType == SignalType.POWER_FACTOR -> {
@@ -61,6 +61,28 @@ class MeterSimulationEngine(
                     energyStates[point.address] = max(0.0, displayValue)
                 }
             }
+        }
+
+        val currentPoints = points.filter { it.signalType.isCurrentType() }
+        if (currentPoints.isNotEmpty()) {
+            val currentValues = currentPoints.map { point ->
+                displayValues[point.address] ?: point.displayValue(point.initialRawValue)
+            }
+            val initialBase = if (currentValues.isEmpty()) {
+                1.0
+            } else {
+                currentValues.average()
+            }
+            val baseMagnitude = max(abs(initialBase), 1.0)
+            currentGroupState = CurrentGroupState(
+                baseValue = initialBase,
+                targetBaseValue = initialBase,
+                baseMagnitude = baseMagnitude,
+                minimum = -baseMagnitude * 2.5,
+                maximum = baseMagnitude * 2.5,
+                ticksUntilNextEvent = nextCurrentEventInterval(),
+                transitionTicksRemaining = 0
+            )
         }
     }
 
@@ -80,41 +102,54 @@ class MeterSimulationEngine(
             updatedValues[point.address] = state.currentValue
         }
 
-        points.filter { it.signalType.isCurrentType() }.forEach { point ->
-            val state = currentStates.getOrPut(point.address) {
-                val initial = point.displayValue(point.initialRawValue)
-                CurrentState(
-                    currentValue = initial,
-                    targetValue = initial,
-                    ticksUntilNextStep = nextStepInterval()
-                )
+        val currentPoints = points.filter { it.signalType.isCurrentType() }
+        if (currentPoints.isNotEmpty()) {
+            val state = currentGroupState ?: run {
+                val initialValues = currentPoints.map { point -> point.displayValue(point.initialRawValue) }
+                val initialBase = if (initialValues.isEmpty()) 1.0 else initialValues.average()
+                val baseMagnitude = max(abs(initialBase), 1.0)
+                CurrentGroupState(
+                    baseValue = initialBase,
+                    targetBaseValue = initialBase,
+                    baseMagnitude = baseMagnitude,
+                    minimum = -baseMagnitude * 2.5,
+                    maximum = baseMagnitude * 2.5,
+                    ticksUntilNextEvent = nextCurrentEventInterval(),
+                    transitionTicksRemaining = 0
+                ).also { currentGroupState = it }
             }
 
-            if (state.ticksUntilNextStep <= 0) {
-                val baseMagnitude = max(abs(point.displayValue(point.initialRawValue)), 1.0)
-                val currentSign = when {
-                    state.currentValue > 0.0 -> 1.0
-                    state.currentValue < 0.0 -> -1.0
-                    else -> if (random.nextBoolean()) 1.0 else -1.0
+            if (state.transitionTicksRemaining > 0) {
+                val delta = state.targetBaseValue - state.baseValue
+                val step = delta / state.transitionTicksRemaining
+                state.baseValue = (state.baseValue + step).coerceIn(state.minimum, state.maximum)
+                state.transitionTicksRemaining -= 1
+                if (state.transitionTicksRemaining == 0) {
+                    state.baseValue = state.targetBaseValue.coerceIn(state.minimum, state.maximum)
+                    state.ticksUntilNextEvent = nextCurrentEventInterval()
                 }
-                val shouldCrossZero = random.nextDouble() < 0.28
-                val nextSign = if (shouldCrossZero) -currentSign else currentSign
-                val stepMagnitude = baseMagnitude * random.nextDouble(0.2, 1.8)
-                state.targetValue = stepMagnitude * nextSign
-                state.ticksUntilNextStep = nextStepInterval()
             } else {
-                state.ticksUntilNextStep -= 1
+                state.ticksUntilNextEvent -= 1
+                if (state.ticksUntilNextEvent <= 0) {
+                    val currentSign = when {
+                        state.baseValue > 0.0 -> 1.0
+                        state.baseValue < 0.0 -> -1.0
+                        else -> if (random.nextBoolean()) 1.0 else -1.0
+                    }
+                    val crossZero = random.nextDouble() < 0.18
+                    val nextSign = if (crossZero) -currentSign else currentSign
+                    val targetMagnitude = state.baseMagnitude * random.nextDouble(0.35, 1.8)
+                    state.targetBaseValue = (targetMagnitude * nextSign).coerceIn(state.minimum, state.maximum)
+                    state.transitionTicksRemaining = random.nextInt(1, 11)
+                }
             }
 
-            val delta = state.targetValue - state.currentValue
-            val smoothing = if (delta == 0.0) 0.0 else max(abs(delta) * 0.45, 0.05)
-            if (abs(delta) <= smoothing) {
-                state.currentValue = state.targetValue
-            } else {
-                state.currentValue += smoothing * kotlin.math.sign(delta)
+            currentPoints.forEach { point ->
+                val microRange = max(abs(state.baseValue) * 0.05, 0.001)
+                val value = (state.baseValue + random.nextDouble(-microRange, microRange))
+                    .coerceIn(state.minimum, state.maximum)
+                updatedValues[point.address] = value
             }
-
-            updatedValues[point.address] = state.currentValue
         }
 
         points.filter { it.signalType == SignalType.POWER_FACTOR }.forEach { point ->
@@ -303,7 +338,7 @@ class MeterSimulationEngine(
         }
     }
 
-    private fun nextStepInterval(): Int = random.nextInt(3, 8)
+    private fun nextCurrentEventInterval(): Int = random.nextInt(60, 201)
 
     private fun nextBurstInterval(): Int = random.nextInt(15, 36)
 
@@ -397,10 +432,14 @@ private data class VoltageState(
     val maximum: Double
 )
 
-private data class CurrentState(
-    var currentValue: Double,
-    var targetValue: Double,
-    var ticksUntilNextStep: Int
+private data class CurrentGroupState(
+    var baseValue: Double,
+    var targetBaseValue: Double,
+    val baseMagnitude: Double,
+    val minimum: Double,
+    val maximum: Double,
+    var ticksUntilNextEvent: Int,
+    var transitionTicksRemaining: Int
 )
 
 private data class PowerFactorState(
