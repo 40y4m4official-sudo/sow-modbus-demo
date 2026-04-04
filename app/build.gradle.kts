@@ -29,8 +29,8 @@ android {
         applicationId = "com.example.meterdemo"
         minSdk = 26
         targetSdk = 35
-        versionCode = 2
-        versionName = "1.1.0"
+        versionCode = 4
+        versionName = "0.0.4"
         buildConfigField(
             "String",
             "APP_UPDATE_JSON_URL",
