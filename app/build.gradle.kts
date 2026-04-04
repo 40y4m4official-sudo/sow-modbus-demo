@@ -1,4 +1,4 @@
-﻿import java.util.Locale
+import com.android.build.gradle.internal.api.ApkVariantOutputImpl
 import java.util.Properties
 
 plugins {
@@ -99,15 +99,14 @@ android {
     }
 }
 
-androidComponents {
-    onVariants(selector().all()) { variant ->
-        val versionName = variant.versionName.orNull ?: "0.0.0"
-        val buildTypeName = variant.buildType.replaceFirstChar {
-            if (it.isLowerCase()) it.titlecase(Locale.US) else it.toString()
-        }
-        variant.outputs.forEach { output ->
-            output.outputFileName.set("SOW-Modbus-Demo-v$versionName-$buildTypeName.apk")
-        }
+android.applicationVariants.all {
+    val resolvedVersionName = versionName ?: "0.0.0"
+    val buildTypeName = buildType.name.replaceFirstChar { char ->
+        if (char.isLowerCase()) char.titlecase() else char.toString()
+    }
+    outputs.all {
+        (this as ApkVariantOutputImpl).outputFileName =
+            "SOW-Modbus-Demo-v$resolvedVersionName-$buildTypeName.apk"
     }
 }
 
@@ -139,4 +138,3 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
 }
-
