@@ -1,4 +1,4 @@
-# APK Update Release Flow
+﻿# APK Update Release Flow
 
 This app uses a public JSON file plus public GitHub Release assets for free APK updates.
 
@@ -6,7 +6,7 @@ This app uses a public JSON file plus public GitHub Release assets for free APK 
 
 The app reads update metadata from:
 
-`https://raw.githubusercontent.com/40y4m4official-sudo/app-android/main/app-update.json`
+`https://raw.githubusercontent.com/40y4m4official-sudo/sow-modbus-demo/main/app-update.json`
 
 Expected format:
 
@@ -14,7 +14,7 @@ Expected format:
 {
   "versionCode": 3,
   "versionName": "1.2.0",
-  "apkUrl": "https://github.com/40y4m4official-sudo/app-android/releases/download/v1.2.0/SOW-Modbus-Demo-v1.2.0-Release.apk"
+  "apkUrl": "https://github.com/40y4m4official-sudo/sow-modbus-demo/releases/download/v1.2.0/SOW-Modbus-Demo-v1.2.0-Release.apk"
 }
 ```
 
@@ -38,3 +38,4 @@ Recommended asset name:
 - The repository must stay public for this direct update flow.
 - The APK asset URL must be reachable without authentication.
 - `versionCode` must increase for the app to detect an update.
+

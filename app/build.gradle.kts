@@ -1,4 +1,4 @@
-import java.util.Locale
+﻿import java.util.Locale
 import java.util.Properties
 
 plugins {
@@ -34,7 +34,7 @@ android {
         buildConfigField(
             "String",
             "APP_UPDATE_JSON_URL",
-            "\"https://raw.githubusercontent.com/40y4m4official-sudo/app-android/main/app-update.json\""
+            "\"https://raw.githubusercontent.com/40y4m4official-sudo/sow-modbus-demo/main/app-update.json\""
         )
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -139,3 +139,4 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
 }
+
