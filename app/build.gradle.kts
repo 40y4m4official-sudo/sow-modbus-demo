@@ -1,3 +1,4 @@
+import java.util.Locale
 import java.util.Properties
 
 plugins {
@@ -30,6 +31,11 @@ android {
         targetSdk = 35
         versionCode = 2
         versionName = "1.1.0"
+        buildConfigField(
+            "String",
+            "APP_UPDATE_JSON_URL",
+            "\"https://raw.githubusercontent.com/40y4m4official-sudo/app-android/main/app-update.json\""
+        )
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -78,6 +84,7 @@ android {
     }
 
     buildFeatures {
+        buildConfig = true
         compose = true
     }
 
@@ -88,6 +95,18 @@ android {
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        }
+    }
+}
+
+androidComponents {
+    onVariants(selector().all()) { variant ->
+        val versionName = variant.versionName.orNull ?: "0.0.0"
+        val buildTypeName = variant.buildType.replaceFirstChar {
+            if (it.isLowerCase()) it.titlecase(Locale.US) else it.toString()
+        }
+        variant.outputs.forEach { output ->
+            output.outputFileName.set("SOW-Modbus-Demo-v$versionName-$buildTypeName.apk")
         }
     }
 }

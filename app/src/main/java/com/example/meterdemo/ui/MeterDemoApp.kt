@@ -52,6 +52,7 @@ fun MeterDemoApp(viewModel: MainViewModel) {
             onRequestUsbPermission = viewModel::requestUsbSerialPermission,
             onConnectUsbDevice = viewModel::connectUsbSerial,
             onDisconnectUsbDevice = viewModel::disconnectUsbSerial,
+            onCheckAndDownloadUpdate = viewModel::checkForAppUpdateOrDownload,
             onSimulateRead = viewModel::simulateReadOfSelectedPoint,
             onSimulateCustomRequest = viewModel::simulateCustomRequest
         )

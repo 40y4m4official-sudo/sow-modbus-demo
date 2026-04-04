@@ -1,9 +1,15 @@
 package com.example.meterdemo.viewmodel
 
 import android.app.Application
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.SystemClock
+import android.provider.Settings
+import androidx.core.content.FileProvider
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.meterdemo.BuildConfig
 import com.example.meterdemo.logging.CommCategory
 import com.example.meterdemo.logging.CommLog
 import com.example.meterdemo.logging.CommLogger
@@ -29,6 +35,7 @@ import com.example.meterdemo.usb.UsbSerialConnectionManager
 import com.example.meterdemo.usb.UsbSerialDeviceSummary
 import com.example.meterdemo.usb.UsbRequestFrameAssembler
 import com.example.meterdemo.usb.UsbSerialScanner
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -36,6 +43,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import org.json.JSONObject
+import java.io.File
+import java.net.HttpURLConnection
+import java.net.URL
 import kotlin.math.roundToInt
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
@@ -50,6 +62,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val usbSerialScanner = UsbSerialScanner(application)
     private val usbRequestFrameAssembler = UsbRequestFrameAssembler()
     private val simulationEngine = MeterSimulationEngine()
+    private val currentAppVersion = resolveCurrentAppVersion(application.packageManager, application.packageName)
     private var simulationJob: Job? = null
     private var lastSimulationTickElapsedRealtime: Long? = null
     private var mainViewMode: MainViewMode = MainViewMode.CARD
@@ -282,6 +295,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun disconnectUsbSerial() {
         usbSerialConnectionManager.disconnect()
+    }
+
+    fun checkForAppUpdateOrDownload() {
+        val updateState = _uiState.value.appUpdate
+        if (updateState.isDownloading) return
+
+        if (updateState.updateAvailable && updateState.apkUrl != null) {
+            downloadAndInstallUpdate(updateState.apkUrl, updateState.latestVersionName)
+        } else {
+            checkForAppUpdate()
+        }
     }
 
     fun clearLogs() {
@@ -660,7 +684,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         selectedEditableUserModelId: String? = _uiState.value.selectedEditableUserModelId,
         draftErrorMessage: String? = _uiState.value.draftErrorMessage,
         editMeterDraft: MeterEditorDraft = _uiState.value.editMeterDraft,
-        simulationRunning: Boolean = _uiState.value.simulationRunning
+        simulationRunning: Boolean = _uiState.value.simulationRunning,
+        appUpdate: AppUpdateUiState = _uiState.value.appUpdate
     ) {
         val snapshots = repository.snapshot()
         val safeIndex = when {
@@ -691,6 +716,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             mainViewMode = mainViewMode,
             rawValueInput = rawValueInput ?: selectedPoint?.let { formatRawValueInput(it) }.orEmpty(),
             simulationRunning = simulationRunning,
+            appUpdate = appUpdate,
             editingExistingUserMeter = editingExistingUserMeter,
             draftReadOnly = draftReadOnly,
             selectedEditableUserModelId = selectedEditableUserModelId,
@@ -722,6 +748,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             mainViewMode = mainViewMode,
             rawValueInput = selectedPoint?.let { formatRawValueInput(it) }.orEmpty(),
             simulationRunning = false,
+            appUpdate = AppUpdateUiState(
+                currentVersionName = currentAppVersion.versionName,
+                currentVersionCode = currentAppVersion.versionCode,
+                statusMessage = "Ready to check for updates"
+            ),
             editingExistingUserMeter = false,
             draftReadOnly = false,
             selectedEditableUserModelId = null,
@@ -839,6 +870,216 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private fun reportDraftError(message: String) {
         logger.error(message)
         refreshUiState(draftErrorMessage = message)
+    }
+
+    private fun checkForAppUpdate() {
+        val currentUpdateState = _uiState.value.appUpdate
+        refreshUiState(
+            selectedPointIndex = _uiState.value.selectedPointIndex,
+            appUpdate = currentUpdateState.copy(
+                isChecking = true,
+                statusMessage = "Checking for updates..."
+            )
+        )
+
+        viewModelScope.launch {
+            val result = withContext(Dispatchers.IO) {
+                fetchRemoteUpdateInfo(BuildConfig.APP_UPDATE_JSON_URL)
+            }
+
+            val nextState = when {
+                result == null -> currentUpdateState.copy(
+                    isChecking = false,
+                    statusMessage = "Failed to retrieve update information"
+                )
+                result.versionCode > currentAppVersion.versionCode -> currentUpdateState.copy(
+                    isChecking = false,
+                    updateAvailable = true,
+                    latestVersionCode = result.versionCode,
+                    latestVersionName = result.versionName,
+                    apkUrl = result.apkUrl,
+                    statusMessage = "Update available: ${result.versionName}"
+                )
+                else -> currentUpdateState.copy(
+                    isChecking = false,
+                    updateAvailable = false,
+                    latestVersionCode = result.versionCode,
+                    latestVersionName = result.versionName,
+                    apkUrl = result.apkUrl,
+                    statusMessage = "You are already on the latest version"
+                )
+            }
+
+            refreshUiState(
+                selectedPointIndex = _uiState.value.selectedPointIndex,
+                appUpdate = nextState
+            )
+        }
+    }
+
+    private fun downloadAndInstallUpdate(apkUrl: String, latestVersionName: String?) {
+        val currentUpdateState = _uiState.value.appUpdate
+        refreshUiState(
+            selectedPointIndex = _uiState.value.selectedPointIndex,
+            appUpdate = currentUpdateState.copy(
+                isDownloading = true,
+                downloadProgressPercent = 0,
+                statusMessage = "Downloading update..."
+            )
+        )
+
+        viewModelScope.launch {
+            val targetFile = File(getApplication<Application>().filesDir, "updates/meterdemo-update.apk").apply {
+                parentFile?.mkdirs()
+            }
+
+            val success = withContext(Dispatchers.IO) {
+                downloadApk(
+                    apkUrl = apkUrl,
+                    targetFile = targetFile
+                ) { progress ->
+                    val current = _uiState.value.appUpdate
+                    refreshUiState(
+                        selectedPointIndex = _uiState.value.selectedPointIndex,
+                        appUpdate = current.copy(
+                            isDownloading = true,
+                            downloadProgressPercent = progress,
+                            statusMessage = if (progress >= 0) {
+                                "Downloading update... $progress%"
+                            } else {
+                                "Downloading update..."
+                            }
+                        )
+                    )
+                }
+            }
+
+            if (!success) {
+                val failedState = _uiState.value.appUpdate.copy(
+                    isDownloading = false,
+                    statusMessage = "Failed to download update"
+                )
+                refreshUiState(
+                    selectedPointIndex = _uiState.value.selectedPointIndex,
+                    appUpdate = failedState
+                )
+                return@launch
+            }
+
+            val readyState = _uiState.value.appUpdate.copy(
+                isDownloading = false,
+                downloadProgressPercent = 100,
+                statusMessage = "Downloaded ${latestVersionName ?: "update"}, launching installer"
+            )
+            refreshUiState(
+                selectedPointIndex = _uiState.value.selectedPointIndex,
+                appUpdate = readyState
+            )
+            launchApkInstaller(targetFile)
+        }
+    }
+
+    private fun fetchRemoteUpdateInfo(jsonUrl: String): RemoteUpdateInfo? {
+        return runCatching {
+            val connection = (URL(jsonUrl).openConnection() as HttpURLConnection).apply {
+                requestMethod = "GET"
+                connectTimeout = 10_000
+                readTimeout = 10_000
+                doInput = true
+            }
+            connection.connect()
+            if (connection.responseCode !in 200..299) {
+                connection.disconnect()
+                return null
+            }
+            val responseText = connection.inputStream.bufferedReader().use { it.readText() }
+            connection.disconnect()
+            val json = JSONObject(responseText)
+            RemoteUpdateInfo(
+                versionCode = json.getInt("versionCode"),
+                versionName = json.optString("versionName").ifBlank { json.getInt("versionCode").toString() },
+                apkUrl = json.getString("apkUrl")
+            )
+        }.getOrNull()
+    }
+
+    private fun downloadApk(
+        apkUrl: String,
+        targetFile: File,
+        onProgress: (Int) -> Unit
+    ): Boolean {
+        return runCatching {
+            val connection = (URL(apkUrl).openConnection() as HttpURLConnection).apply {
+                requestMethod = "GET"
+                connectTimeout = 15_000
+                readTimeout = 30_000
+                doInput = true
+            }
+            connection.connect()
+            if (connection.responseCode !in 200..299) {
+                connection.disconnect()
+                return false
+            }
+
+            val contentLength = connection.contentLength
+            connection.inputStream.use { input ->
+                targetFile.outputStream().use { output ->
+                    val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+                    var bytesCopied = 0L
+                    while (true) {
+                        val read = input.read(buffer)
+                        if (read <= 0) break
+                        output.write(buffer, 0, read)
+                        bytesCopied += read
+                        if (contentLength > 0) {
+                            val progress = ((bytesCopied * 100) / contentLength).toInt().coerceIn(0, 100)
+                            onProgress(progress)
+                        } else {
+                            onProgress(-1)
+                        }
+                    }
+                    output.flush()
+                }
+            }
+            connection.disconnect()
+            true
+        }.getOrElse {
+            false
+        }
+    }
+
+    private fun launchApkInstaller(apkFile: File) {
+        val application = getApplication<Application>()
+        val packageManager = application.packageManager
+        if (!packageManager.canRequestPackageInstalls()) {
+            val settingsIntent = Intent(
+                Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                Uri.parse("package:${application.packageName}")
+            ).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            application.startActivity(settingsIntent)
+            val current = _uiState.value.appUpdate
+            refreshUiState(
+                selectedPointIndex = _uiState.value.selectedPointIndex,
+                appUpdate = current.copy(
+                    statusMessage = "Allow installs from this app, then tap download again"
+                )
+            )
+            return
+        }
+
+        val apkUri = FileProvider.getUriForFile(
+            application,
+            "${application.packageName}.fileprovider",
+            apkFile
+        )
+        val installIntent = Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(apkUri, "application/vnd.android.package-archive")
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        application.startActivity(installIntent)
     }
 
     private fun persistState() {
@@ -981,6 +1222,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
 }
 
+private fun resolveCurrentAppVersion(
+    packageManager: PackageManager,
+    packageName: String
+): InstalledAppVersion {
+    val packageInfo = packageManager.getPackageInfo(packageName, 0)
+    return InstalledAppVersion(
+        versionName = packageInfo.versionName ?: "unknown",
+        versionCode = packageInfo.longVersionCode.toInt()
+    )
+}
+
 data class MainUiState(
     val profileName: String,
     val profileModelId: String,
@@ -1001,6 +1253,7 @@ data class MainUiState(
     val mainViewMode: MainViewMode,
     val rawValueInput: String,
     val simulationRunning: Boolean,
+    val appUpdate: AppUpdateUiState,
     val editingExistingUserMeter: Boolean,
     val draftReadOnly: Boolean,
     val selectedEditableUserModelId: String?,
@@ -1033,4 +1286,28 @@ data class MeterRegisterDraft(
     val initialRawValueInput: String,
     val dataType: DataType = DataType.INT,
     val wordByteOrder: WordByteOrder = WordByteOrder.MSB_MSB
+)
+
+data class AppUpdateUiState(
+    val currentVersionName: String,
+    val currentVersionCode: Int,
+    val updateAvailable: Boolean = false,
+    val latestVersionName: String? = null,
+    val latestVersionCode: Int? = null,
+    val apkUrl: String? = null,
+    val isChecking: Boolean = false,
+    val isDownloading: Boolean = false,
+    val downloadProgressPercent: Int? = null,
+    val statusMessage: String = ""
+)
+
+private data class InstalledAppVersion(
+    val versionName: String,
+    val versionCode: Int
+)
+
+private data class RemoteUpdateInfo(
+    val versionCode: Int,
+    val versionName: String,
+    val apkUrl: String
 )
