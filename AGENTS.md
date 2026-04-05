@@ -31,6 +31,15 @@ When preparing a new release:
 9. Create the GitHub Release
 10. Upload the APK asset with the expected filename
 
+## Documentation Update Rule
+
+- When implementation changes are made, update the corresponding documentation in the same work whenever practical.
+- At minimum, check whether the change affects:
+  - `docs/specs/*.md`
+  - `docs/c4/*.md`
+  - `docs/README.md`
+- If behavior, architecture, screen flow, release/update flow, or operational rules changed, reflect that change in the matching docs before closing the task.
+
 ## Update Distribution
 
 - The app uses direct APK update distribution without Google Play in-app updates.
