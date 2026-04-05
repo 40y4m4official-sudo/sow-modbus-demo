@@ -59,7 +59,7 @@ Contains:
 - language icon button in the header
 - tap opens a dropdown menu of supported app languages
 - dropdown shows language names only
-- dropdown labels are fixed as `English`, `“ú–{Œê`, and future `’†•¶`
+- dropdown labels are fixed as `English`, `ï¿½ï¿½ï¿½{ï¿½ï¿½`, and future `ï¿½ï¿½ï¿½ï¿½`
 - back action uses the shared fixed-size icon button
 
 ### Language Switching

@@ -5,7 +5,7 @@ enum class AppLanguage(
     val fixedLabel: String
 ) {
     ENGLISH("en", "English"),
-    JAPANESE("ja", "“ú–{Œê");
+    JAPANESE("ja", "\u65E5\u672C\u8A9E");
 
     companion object {
         fun fromTag(tag: String?): AppLanguage {

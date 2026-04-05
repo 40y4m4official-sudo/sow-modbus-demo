@@ -1,4 +1,4 @@
-﻿# APK Update Release Flow
+# APK Update Release Flow
 
 This app uses a public JSON file plus public GitHub Release assets for free APK updates.
 
