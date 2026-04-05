@@ -95,11 +95,7 @@ fun SettingsScreen(
                         AppLanguage.entries.forEach { language ->
                             DropdownMenuItem(
                                 text = {
-                                    val label = when (language) {
-                                        AppLanguage.ENGLISH -> stringResource(R.string.language_english)
-                                        AppLanguage.JAPANESE -> stringResource(R.string.language_japanese)
-                                    }
-                                    Text(text = label)
+                                    Text(text = language.fixedLabel)
                                 },
                                 onClick = {
                                     languageExpanded = false
@@ -499,4 +495,5 @@ fun SettingsScreen(
         }
     }
 }
+
 

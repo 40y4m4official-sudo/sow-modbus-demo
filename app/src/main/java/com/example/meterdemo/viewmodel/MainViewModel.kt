@@ -215,9 +215,24 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun selectAppLanguage(language: AppLanguage) {
         if (language == appLanguage) return
+        val currentState = _uiState.value
         appLanguage = language
         appLanguageManager.setLanguage(language)
-        refreshUiState(selectedPointIndex = _uiState.value.selectedPointIndex)
+        val localizedUsbStatus = when {
+            currentState.connectedUsbDeviceName != null -> appString(R.string.usb_status_connected)
+            currentState.usbConnectionStatus.contains("Connect", ignoreCase = true) &&
+                currentState.usbConnectionStatus.contains("...", ignoreCase = true) -> appString(R.string.usb_status_connecting)
+            currentState.usbConnectionStatus.contains("failed", ignoreCase = true) -> appString(R.string.usb_status_connect_failed)
+            currentState.usbConnectionStatus.contains("error", ignoreCase = true) -> appString(R.string.usb_status_error)
+            currentState.usbConnectionStatus.contains("Ú‘±’†") -> appString(R.string.usb_status_connecting)
+            currentState.usbConnectionStatus.contains("Ž¸”s") -> appString(R.string.usb_status_connect_failed)
+            currentState.usbConnectionStatus.contains("ƒGƒ‰[") -> appString(R.string.usb_status_error)
+            else -> appString(R.string.usb_status_disconnected)
+        }
+        refreshUiState(
+            selectedPointIndex = currentState.selectedPointIndex,
+            usbConnectionStatus = localizedUsbStatus
+        )
     }
 
     fun selectProfile(modelId: String) {
@@ -1333,3 +1348,4 @@ private data class RemoteUpdateInfo(
     val versionName: String,
     val apkUrl: String
 )
+

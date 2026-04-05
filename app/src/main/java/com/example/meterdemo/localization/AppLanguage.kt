@@ -1,14 +1,11 @@
 package com.example.meterdemo.localization
 
-import androidx.annotation.StringRes
-import com.example.meterdemo.R
-
 enum class AppLanguage(
     val tag: String,
-    @StringRes val labelRes: Int
+    val fixedLabel: String
 ) {
-    ENGLISH("en", R.string.language_english),
-    JAPANESE("ja", R.string.language_japanese);
+    ENGLISH("en", "English"),
+    JAPANESE("ja", "“ú–{Œê");
 
     companion object {
         fun fromTag(tag: String?): AppLanguage {

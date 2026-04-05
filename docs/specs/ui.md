@@ -59,6 +59,7 @@ Contains:
 - language icon button in the header
 - tap opens a dropdown menu of supported app languages
 - dropdown shows language names only
+- dropdown labels are fixed as `English`, `“ú–{Œê`, and future `’†•¶`
 - back action uses the shared fixed-size icon button
 
 ### Language Switching
@@ -71,6 +72,7 @@ Behavior:
 - selection is persisted locally
 - stored language is applied again on next startup
 - switching language updates resource-based UI strings
+- language names shown in the dropdown do not change with the active locale
 
 ### Sections Order
 
@@ -98,6 +100,7 @@ Contains:
 - connection status
 - refresh button
 - per-device permission/connect/disconnect actions
+- connection status label follows the selected UI language
 
 ### Logs Section
 
@@ -167,4 +170,3 @@ Contains:
 - `app/src/main/java/com/example/meterdemo/ui/*`
 - `app/src/main/java/com/example/meterdemo/viewmodel/MainViewModel.kt`
 - `app/src/main/java/com/example/meterdemo/localization/*`
-
