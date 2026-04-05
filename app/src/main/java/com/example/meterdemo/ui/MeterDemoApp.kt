@@ -47,6 +47,7 @@ fun MeterDemoApp(viewModel: MainViewModel) {
             onSlaveIdChange = viewModel::updateSlaveIdInput,
             onApplySlaveId = viewModel::applySlaveId,
             onToggleMainViewMode = viewModel::toggleMainViewMode,
+            onLanguageSelected = viewModel::selectAppLanguage,
             onOpenLogs = { currentScreen = Screen.Logs },
             onRefreshUsbDevices = viewModel::refreshUsbDevices,
             onRequestUsbPermission = viewModel::requestUsbSerialPermission,

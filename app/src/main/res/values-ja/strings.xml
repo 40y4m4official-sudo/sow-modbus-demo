@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">SMD</string>
+
+    <string name="back_button_description">戻る</string>
+    <string name="language_button_description">言語を変更</string>
+    <string name="language_current_prefix">現在:</string>
+    <string name="language_english">English</string>
+    <string name="language_japanese">日本語</string>
+
+    <string name="settings_title">設定</string>
+    <string name="settings_meter_preset">メータープリセット</string>
+    <string name="settings_added_tag">added</string>
+    <string name="settings_edit_meter">メーター編集</string>
+    <string name="settings_slave_address">スレーブアドレス</string>
+    <string name="settings_apply_slave_address">スレーブアドレスを適用</string>
+    <string name="settings_main_view">メイン表示: %1$s</string>
+    <string name="main_view_card">カード表示</string>
+    <string name="main_view_list">一覧表示</string>
+    <string name="settings_usb_title">USB-RS485</string>
+    <string name="settings_no_usb_devices">USB デバイスはまだ検出されていません。</string>
+    <string name="settings_detected_devices">検出デバイス数: %1$d</string>
+    <string name="settings_profile_serial">プロファイル通信設定: %1$d 8%2$s%3$d</string>
+    <string name="settings_connection_status">接続状態: %1$s</string>
+    <string name="settings_connected_device">接続中デバイス: %1$s</string>
+    <string name="settings_refresh_usb_devices">USB デバイスを再読込</string>
+    <string name="settings_no_supported_usb_serial">対応する USB シリアルアダプタはまだ検出されていません。SH-U11C は接続時に FTDI シリアルデバイスとして表示される想定です。</string>
+    <string name="settings_usb_serial_adapters">USB シリアルアダプタ数: %1$d</string>
+    <string name="settings_vid_pid_permission">VID:PID %1$s:%2$s / 権限=%3$s</string>
+    <string name="settings_permission">権限</string>
+    <string name="settings_disconnect">切断</string>
+    <string name="settings_connect">接続</string>
+    <string name="settings_logs_title">ログ</string>
+    <string name="settings_log_entries">件数: %1$d</string>
+    <string name="settings_open_logs">ログを開く</string>
+    <string name="settings_comm_test_title">通信テスト</string>
+    <string name="settings_current_item">現在項目: %1$s</string>
+    <string name="settings_run_read">03H 読み取り実行</string>
+    <string name="settings_custom_hex_request">カスタム HEX リクエスト</string>
+    <string name="settings_custom_hex_placeholder">02 03 03 00 00 01 44 F8</string>
+    <string name="settings_send_custom_request">カスタム送信</string>
+    <string name="settings_app_update_title">アプリ更新</string>
+    <string name="settings_current_version">現在のバージョン: %1$s</string>
+    <string name="settings_update_ready">更新確認の準備ができています</string>
+    <string name="settings_latest_version">最新バージョン: %1$s</string>
+    <string name="settings_download_progress">ダウンロード進捗: %1$d%%</string>
+    <string name="settings_downloading">ダウンロード中...</string>
+    <string name="settings_download_and_install_update">更新をダウンロードしてインストール</string>
+    <string name="settings_checking">確認中...</string>
+    <string name="settings_check_for_update">更新を確認</string>
+    <string name="usb_status_connected">接続済み</string>
+    <string name="usb_status_connecting">接続中...</string>
+    <string name="usb_status_connect_failed">接続失敗</string>
+    <string name="usb_status_disconnected">未接続</string>
+    <string name="usb_status_error">エラー</string>
+    <string name="update_status_checking">更新を確認しています...</string>
+    <string name="update_status_failed_fetch">更新情報の取得に失敗しました</string>
+    <string name="update_status_available">更新があります: %1$s</string>
+    <string name="update_status_latest">すでに最新バージョンです</string>
+    <string name="update_status_downloading">更新をダウンロードしています...</string>
+    <string name="update_status_downloading_progress">更新をダウンロードしています... %1$d%%</string>
+    <string name="update_status_failed_download">更新のダウンロードに失敗しました</string>
+    <string name="update_status_downloaded">%1$s をダウンロードしました。インストーラを起動します</string>
+    <string name="update_status_allow_install">このアプリからのインストールを許可して、もう一度ダウンロードを押してください</string>
+    <string name="update_generic_label">更新</string>
+
+    <string name="main_slave_id">スレーブ ID %1$d</string>
+    <string name="main_no_point_available">表示できる項目がありません</string>
+    <string name="main_address_position">アドレス %1$d / %2$d 件目 / 全 %3$d 件</string>
+    <string name="main_tap_next_hint">表示パネルをタップすると次の項目へ移動します</string>
+    <string name="main_list_addr">Addr</string>
+    <string name="main_list_item">項目名</string>
+    <string name="main_list_value">値</string>
+    <string name="main_previous">前へ</string>
+    <string name="main_next">次へ</string>
+    <string name="main_demo_value">デモ値</string>
+    <string name="main_auto_running">自動変動: 実行中</string>
+    <string name="main_auto_stopped">自動変動: 停止中</string>
+    <string name="main_measured_value">計測値</string>
+    <string name="main_stop_auto">自動変動を停止</string>
+    <string name="main_start_auto">自動変動を開始</string>
+    <string name="main_apply">適用</string>
+    <string name="main_read_03h">03H 読み取り</string>
+    <string name="main_reset_all">すべてリセット</string>
+
+    <string name="logs_title">通信ログ</string>
+    <string name="logs_stored">保存件数: %1$d</string>
+    <string name="logs_summary">集計</string>
+    <string name="logs_share_subject">Meter Demo Logs</string>
+    <string name="logs_export_chooser">ログを共有</string>
+    <string name="logs_export_description">ログをエクスポート</string>
+    <string name="logs_clear_description">ログを消去</string>
+    <string name="logs_empty">ログはまだありません</string>
+
+    <string name="summary_title">アドレス集計</string>
+    <string name="summary_valid_requests">有効リクエスト: %1$d / 開始アドレス種別: %2$d</string>
+    <string name="summary_empty">現在のログに有効な 03H/04H リクエストフレームはありません。</string>
+    <string name="summary_addr">Addr %1$d</string>
+    <string name="summary_count">x%1$d</string>
+    <string name="summary_slave_fc_qty">Slave %1$d / FC %2$s / Qty %3$d</string>
+    <string name="summary_last_seen">最終検出 %1$s</string>
+</resources>

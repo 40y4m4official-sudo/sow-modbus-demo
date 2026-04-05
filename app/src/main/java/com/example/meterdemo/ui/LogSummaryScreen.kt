@@ -16,7 +16,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.example.meterdemo.R
 import com.example.meterdemo.logging.AddressSummary
 import com.example.meterdemo.logging.CommLog
 import com.example.meterdemo.logging.LogAddressSummaryAnalyzer
@@ -39,19 +41,23 @@ fun LogSummaryScreen(
             .padding(20.dp)
     ) {
         ScreenHeader(
-            title = "Address Summary",
+            title = stringResource(R.string.summary_title),
             onBack = onBack
         )
 
         Text(
-            text = "Valid requests: ${summaries.sumOf { it.count }} / unique starts: ${summaries.size}",
+            text = stringResource(
+                R.string.summary_valid_requests,
+                summaries.sumOf { it.count },
+                summaries.size
+            ),
             modifier = Modifier.padding(top = 12.dp, bottom = 16.dp),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
         if (summaries.isEmpty()) {
-            Text("No valid 03H/04H request frames found in current logs.")
+            Text(stringResource(R.string.summary_empty))
             return
         }
 
@@ -80,22 +86,30 @@ private fun AddressSummaryRow(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = "Addr ${summary.startAddress}",
+                    text = stringResource(R.string.summary_addr, summary.startAddress),
                     style = MaterialTheme.typography.titleMedium
                 )
                 Text(
-                    text = "x${summary.count}",
+                    text = stringResource(R.string.summary_count, summary.count),
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.primary
                 )
             }
             Text(
-                text = "Slave ${summary.slaveId} / FC ${"%02X".format(summary.functionCode)} / Qty ${summary.quantity}",
+                text = stringResource(
+                    R.string.summary_slave_fc_qty,
+                    summary.slaveId,
+                    "%02X".format(summary.functionCode),
+                    summary.quantity
+                ),
                 modifier = Modifier.padding(top = 6.dp),
                 style = MaterialTheme.typography.bodyMedium
             )
             Text(
-                text = "Last seen ${formatter.format(Date(summary.lastSeenTimestamp))}",
+                text = stringResource(
+                    R.string.summary_last_seen,
+                    formatter.format(Date(summary.lastSeenTimestamp))
+                ),
                 modifier = Modifier.padding(top = 4.dp),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant

@@ -44,6 +44,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
+import com.example.meterdemo.R
 import com.example.meterdemo.meter.model.DataType
 import com.example.meterdemo.viewmodel.MainUiState
 import com.example.meterdemo.viewmodel.MainViewMode
@@ -82,14 +84,14 @@ fun MeterValuesScreen(
                     modifier = Modifier.fillMaxWidth()
                 )
                 Text(
-                    text = "Slave ID ${uiState.slaveId}",
+                    text = stringResource(R.string.main_slave_id, uiState.slaveId),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             HeaderIconButton(
                 onClick = onOpenSettings,
-                contentDescription = "Settings"
+                contentDescription = stringResource(R.string.settings_title)
             ) {
                 Icon(
                     imageVector = Icons.Outlined.Settings,
@@ -122,7 +124,7 @@ fun MeterValuesScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     if (selectedPoint == null) {
-                        Text("No point available")
+                        Text(stringResource(R.string.main_no_point_available))
                     } else {
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
@@ -142,13 +144,18 @@ fun MeterValuesScreen(
                             )
                             Spacer(modifier = Modifier.height(12.dp))
                             Text(
-                                text = "Address ${selectedPoint.address} / ${uiState.selectedPointIndex + 1} of ${uiState.points.size}",
+                                text = stringResource(
+                                    R.string.main_address_position,
+                                    selectedPoint.address,
+                                    uiState.selectedPointIndex + 1,
+                                    uiState.points.size
+                                ),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                text = "Tap the display to move to the next item",
+                                text = stringResource(R.string.main_tap_next_hint),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 textAlign = TextAlign.Center
@@ -175,19 +182,19 @@ fun MeterValuesScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Addr",
+                            text = stringResource(R.string.main_list_addr),
                             modifier = Modifier.width(72.dp),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
-                            text = "Item",
+                            text = stringResource(R.string.main_list_item),
                             modifier = Modifier.weight(1f),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
-                            text = "Value",
+                            text = stringResource(R.string.main_list_value),
                             modifier = Modifier.width(128.dp),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -260,7 +267,7 @@ fun MeterValuesScreen(
             ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
-                    contentDescription = "Previous"
+                    contentDescription = stringResource(R.string.main_previous)
                 )
             }
             Button(
@@ -269,7 +276,7 @@ fun MeterValuesScreen(
             ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Outlined.ArrowForward,
-                    contentDescription = "Next"
+                    contentDescription = stringResource(R.string.main_next)
                 )
             }
         }
@@ -282,12 +289,16 @@ fun MeterValuesScreen(
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(
-                    text = "Demo Value",
+                    text = stringResource(R.string.main_demo_value),
                     style = MaterialTheme.typography.titleMedium
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = if (uiState.simulationRunning) "Auto simulation: Running" else "Auto simulation: Stopped",
+                    text = if (uiState.simulationRunning) {
+                        stringResource(R.string.main_auto_running)
+                    } else {
+                        stringResource(R.string.main_auto_stopped)
+                    },
                     style = MaterialTheme.typography.bodySmall,
                     color = if (uiState.simulationRunning) {
                         Color(0xFF2F6B57)
@@ -299,7 +310,7 @@ fun MeterValuesScreen(
                 OutlinedTextField(
                     value = uiState.rawValueInput,
                     onValueChange = onRawValueChange,
-                    label = { Text("Measured Value") },
+                    label = { Text(stringResource(R.string.main_measured_value)) },
                     keyboardOptions = KeyboardOptions(
                         keyboardType = if (selectedPoint?.dataType == DataType.FLOAT) {
                             KeyboardType.Decimal
@@ -324,14 +335,18 @@ fun MeterValuesScreen(
                             } else {
                                 Icons.Outlined.PlayArrow
                             },
-                            contentDescription = if (uiState.simulationRunning) "Stop auto simulation" else "Start auto simulation"
+                            contentDescription = if (uiState.simulationRunning) {
+                                stringResource(R.string.main_stop_auto)
+                            } else {
+                                stringResource(R.string.main_start_auto)
+                            }
                         )
                     }
                     Button(
                         onClick = onApplyValue,
                         modifier = Modifier.weight(1f)
                     ) {
-                        Text("Apply")
+                        Text(stringResource(R.string.main_apply))
                     }
                 }
                 Spacer(modifier = Modifier.height(12.dp))
@@ -343,13 +358,13 @@ fun MeterValuesScreen(
                         onClick = onSimulateRead,
                         modifier = Modifier.weight(1f)
                     ) {
-                        Text("Read 03H")
+                        Text(stringResource(R.string.main_read_03h))
                     }
                     OutlinedButton(
                         onClick = onResetValues,
                         modifier = Modifier.weight(1f)
                     ) {
-                        Text("Reset All")
+                        Text(stringResource(R.string.main_reset_all))
                     }
                 }
             }

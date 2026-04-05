@@ -38,7 +38,7 @@ Describe the main internal components of the Android application.
   - `app/src/main/java/com/example/meterdemo/viewmodel/MainViewModel.kt`
 - Responsibilities:
   - main state holder for UI
-  - orchestrates repository, Modbus engine, USB, simulation, persistence, logging, and updates
+  - orchestrates repository, Modbus engine, USB, simulation, persistence, logging, updates, and language selection
   - converts display input to raw values
   - restores persisted state on startup
   - owns update check/download/install flow
@@ -95,6 +95,18 @@ Describe the main internal components of the Android application.
   - persist user profiles
   - persist selected profile, slave ID, raw values, and main view mode
 
+### Localization
+
+- Files:
+  - `app/src/main/java/com/example/meterdemo/localization/*`
+  - `app/src/main/res/values/strings.xml`
+  - `app/src/main/res/values-ja/strings.xml`
+- Responsibilities:
+  - store current app language selection
+  - apply stored locale on app startup
+  - expose current language to settings UI
+  - provide localized UI strings for supported languages
+
 ### CommLogger / Logging Components
 
 - Files:
@@ -128,6 +140,7 @@ Describe the main internal components of the Android application.
   - `MeterSimulationEngine`
   - `MeterPersistence`
   - `CommLogger`
+  - `AppLanguageManager`
 - `ModbusRtuSlaveEngine` depends on `MeterRepository` for actual register data.
 - USB layer feeds validated request frames to `MainViewModel`, which passes them to `ModbusRtuSlaveEngine`.
 - Simulation writes updated raw values back into `MeterRepository` through the view model.

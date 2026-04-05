@@ -53,6 +53,25 @@ Supported display modes:
 
 ## Settings Screen
 
+### Header Actions
+
+Contains:
+- language icon button in the header
+- tap opens a dropdown menu of supported app languages
+- current selection is indicated inside the dropdown
+- back action uses the shared fixed-size icon button
+
+### Language Switching
+
+Current supported app languages:
+- English
+- Japanese
+
+Behavior:
+- selection is persisted locally
+- stored language is applied again on next startup
+- switching language updates resource-based UI strings
+
 ### Sections Order
 
 Current order:
@@ -108,7 +127,7 @@ Contains:
 ## Shared Header Rules
 
 - back action uses a fixed-size arrow icon, not text
-- edit/delete/settings utility actions prefer fixed-size icons for layout stability
+- edit/delete/settings/language utility actions prefer fixed-size icons for layout stability
 - screen headers are kept outside the scrolling content region where appropriate
 
 ## Edit Meter Screen
@@ -147,3 +166,4 @@ Contains:
 
 - `app/src/main/java/com/example/meterdemo/ui/*`
 - `app/src/main/java/com/example/meterdemo/viewmodel/MainViewModel.kt`
+- `app/src/main/java/com/example/meterdemo/localization/*`
