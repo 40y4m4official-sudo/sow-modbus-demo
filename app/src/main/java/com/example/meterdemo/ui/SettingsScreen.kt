@@ -183,61 +183,6 @@ fun SettingsScreen(
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        text = "App Update",
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "Current version: ${uiState.appUpdate.currentVersionName} (${uiState.appUpdate.currentVersionCode})",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = uiState.appUpdate.statusMessage.ifBlank { "Ready to check for updates" },
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    uiState.appUpdate.latestVersionName?.let { latestVersion ->
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = "Latest version: $latestVersion (${uiState.appUpdate.latestVersionCode ?: "-"})",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    uiState.appUpdate.downloadProgressPercent?.let { progress ->
-                        if (uiState.appUpdate.isDownloading || progress > 0) {
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = "Download progress: $progress%",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Button(
-                        onClick = onCheckAndDownloadUpdate,
-                        modifier = Modifier.fillMaxWidth(),
-                        enabled = !uiState.appUpdate.isChecking && !uiState.appUpdate.isDownloading
-                    ) {
-                        Text(
-                            when {
-                                uiState.appUpdate.isDownloading -> "Downloading..."
-                                uiState.appUpdate.updateAvailable -> "Download and Install Update"
-                                uiState.appUpdate.isChecking -> "Checking..."
-                                else -> "Check for Update"
-                            }
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
                         text = "USB-RS485",
                         style = MaterialTheme.typography.titleMedium
                     )
@@ -428,6 +373,61 @@ fun SettingsScreen(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text("Send Custom Request")
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "App Update",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Current version: ${uiState.appUpdate.currentVersionName}",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = uiState.appUpdate.statusMessage.ifBlank { "Ready to check for updates" },
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    uiState.appUpdate.latestVersionName?.let { latestVersion ->
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Latest version: $latestVersion",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    uiState.appUpdate.downloadProgressPercent?.let { progress ->
+                        if (uiState.appUpdate.isDownloading || progress > 0) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "Download progress: $progress%",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Button(
+                        onClick = onCheckAndDownloadUpdate,
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !uiState.appUpdate.isChecking && !uiState.appUpdate.isDownloading
+                    ) {
+                        Text(
+                            when {
+                                uiState.appUpdate.isDownloading -> "Downloading..."
+                                uiState.appUpdate.updateAvailable -> "Download and Install Update"
+                                uiState.appUpdate.isChecking -> "Checking..."
+                                else -> "Check for Update"
+                            }
+                        )
                     }
                 }
             }
