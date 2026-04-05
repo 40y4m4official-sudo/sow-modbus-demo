@@ -99,13 +99,7 @@ fun SettingsScreen(
                                         AppLanguage.ENGLISH -> stringResource(R.string.language_english)
                                         AppLanguage.JAPANESE -> stringResource(R.string.language_japanese)
                                     }
-                                    Text(
-                                        text = if (language == uiState.appLanguage) {
-                                            "${stringResource(R.string.language_current_prefix)} $label"
-                                        } else {
-                                            label
-                                        }
-                                    )
+                                    Text(text = label)
                                 },
                                 onClick = {
                                     languageExpanded = false
@@ -505,3 +499,4 @@ fun SettingsScreen(
         }
     }
 }
+

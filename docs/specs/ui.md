@@ -58,7 +58,7 @@ Supported display modes:
 Contains:
 - language icon button in the header
 - tap opens a dropdown menu of supported app languages
-- current selection is indicated inside the dropdown
+- dropdown shows language names only
 - back action uses the shared fixed-size icon button
 
 ### Language Switching
@@ -167,3 +167,4 @@ Contains:
 - `app/src/main/java/com/example/meterdemo/ui/*`
 - `app/src/main/java/com/example/meterdemo/viewmodel/MainViewModel.kt`
 - `app/src/main/java/com/example/meterdemo/localization/*`
+
