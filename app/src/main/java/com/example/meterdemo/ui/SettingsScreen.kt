@@ -43,6 +43,7 @@ import com.example.meterdemo.logging.CommLog
 import com.example.meterdemo.localization.AppLanguage
 import com.example.meterdemo.viewmodel.MainViewMode
 import com.example.meterdemo.viewmodel.MainUiState
+import com.example.meterdemo.viewmodel.UsbConnectionStatus
 
 @Composable
 fun SettingsScreen(
@@ -67,6 +68,13 @@ fun SettingsScreen(
     var presetExpanded by remember { mutableStateOf(false) }
     var customHex by remember { mutableStateOf("") }
     var languageExpanded by remember { mutableStateOf(false) }
+    val connectionStatusLabel = when (uiState.usbConnectionStatus) {
+        UsbConnectionStatus.DISCONNECTED -> stringResource(R.string.usb_status_disconnected)
+        UsbConnectionStatus.CONNECTING -> stringResource(R.string.usb_status_connecting)
+        UsbConnectionStatus.CONNECTED -> stringResource(R.string.usb_status_connected)
+        UsbConnectionStatus.CONNECT_FAILED -> stringResource(R.string.usb_status_connect_failed)
+        UsbConnectionStatus.ERROR -> stringResource(R.string.usb_status_error)
+    }
 
     Column(
         modifier = Modifier
@@ -256,7 +264,7 @@ fun SettingsScreen(
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = stringResource(R.string.settings_connection_status, uiState.usbConnectionStatus),
+                        text = stringResource(R.string.settings_connection_status, connectionStatusLabel),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

@@ -91,7 +91,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 )
                 refreshUiState(
                     selectedPointIndex = _uiState.value.selectedPointIndex,
-                    usbConnectionStatus = appString(R.string.usb_status_connected),
+                    usbConnectionStatus = UsbConnectionStatus.CONNECTED,
                     connectedUsbDeviceName = deviceName
                 )
                 refreshUsbDevices()
@@ -104,7 +104,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 usbRequestFrameAssembler.clear()
                 refreshUiState(
                     selectedPointIndex = _uiState.value.selectedPointIndex,
-                    usbConnectionStatus = reason,
+                    usbConnectionStatus = UsbConnectionStatus.DISCONNECTED,
                     connectedUsbDeviceName = null
                 )
                 refreshUsbDevices()
@@ -119,7 +119,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 logger.error(message, CommCategory.USB)
                 refreshUiState(
                     selectedPointIndex = _uiState.value.selectedPointIndex,
-                    usbConnectionStatus = appString(R.string.usb_status_error)
+                    usbConnectionStatus = UsbConnectionStatus.ERROR
                 )
             }
         }
@@ -215,24 +215,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun selectAppLanguage(language: AppLanguage) {
         if (language == appLanguage) return
-        val currentState = _uiState.value
         appLanguage = language
         appLanguageManager.setLanguage(language)
-        val localizedUsbStatus = when {
-            currentState.connectedUsbDeviceName != null -> appString(R.string.usb_status_connected)
-            currentState.usbConnectionStatus.contains("Connect", ignoreCase = true) &&
-                currentState.usbConnectionStatus.contains("...", ignoreCase = true) -> appString(R.string.usb_status_connecting)
-            currentState.usbConnectionStatus.contains("failed", ignoreCase = true) -> appString(R.string.usb_status_connect_failed)
-            currentState.usbConnectionStatus.contains("error", ignoreCase = true) -> appString(R.string.usb_status_error)
-            currentState.usbConnectionStatus.contains("Ú‘±’†") -> appString(R.string.usb_status_connecting)
-            currentState.usbConnectionStatus.contains("Ž¸”s") -> appString(R.string.usb_status_connect_failed)
-            currentState.usbConnectionStatus.contains("ƒGƒ‰[") -> appString(R.string.usb_status_error)
-            else -> appString(R.string.usb_status_disconnected)
-        }
-        refreshUiState(
-            selectedPointIndex = currentState.selectedPointIndex,
-            usbConnectionStatus = localizedUsbStatus
-        )
+        refreshUiState(selectedPointIndex = _uiState.value.selectedPointIndex)
     }
 
     fun selectProfile(modelId: String) {
@@ -302,7 +287,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val profile = repository.getProfile()
         refreshUiState(
             selectedPointIndex = _uiState.value.selectedPointIndex,
-            usbConnectionStatus = appString(R.string.usb_status_connecting),
+            usbConnectionStatus = UsbConnectionStatus.CONNECTING,
             connectedUsbDeviceName = _uiState.value.connectedUsbDeviceName
         )
         if (!usbSerialConnectionManager.connect(
@@ -314,7 +299,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         ) {
             refreshUiState(
                 selectedPointIndex = _uiState.value.selectedPointIndex,
-                usbConnectionStatus = appString(R.string.usb_status_connect_failed),
+                usbConnectionStatus = UsbConnectionStatus.CONNECT_FAILED,
                 connectedUsbDeviceName = null
             )
         }
@@ -704,7 +689,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         slaveIdInput: String? = null,
         usbDevices: List<UsbDeviceSummary> = _uiState.value.usbDevices,
         usbSerialDevices: List<UsbSerialDeviceSummary> = _uiState.value.usbSerialDevices,
-        usbConnectionStatus: String = _uiState.value.usbConnectionStatus,
+        usbConnectionStatus: UsbConnectionStatus = _uiState.value.usbConnectionStatus,
         connectedUsbDeviceName: String? = _uiState.value.connectedUsbDeviceName,
         appLanguage: AppLanguage = _uiState.value.appLanguage,
         editingExistingUserMeter: Boolean = _uiState.value.editingExistingUserMeter,
@@ -769,7 +754,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             profileStopBits = repository.getProfile().stopBits,
             usbDevices = usbDeviceScanner.scan(),
             usbSerialDevices = usbSerialScanner.scan(),
-            usbConnectionStatus = appString(R.string.usb_status_disconnected),
+            usbConnectionStatus = UsbConnectionStatus.DISCONNECTED,
             connectedUsbDeviceName = null,
             appLanguage = appLanguage,
             points = snapshots,
@@ -1281,7 +1266,7 @@ data class MainUiState(
     val profileStopBits: Int,
     val usbDevices: List<UsbDeviceSummary>,
     val usbSerialDevices: List<UsbSerialDeviceSummary>,
-    val usbConnectionStatus: String,
+    val usbConnectionStatus: UsbConnectionStatus,
     val connectedUsbDeviceName: String?,
     val appLanguage: AppLanguage,
     val points: List<MeterValueSnapshot>,
@@ -1348,4 +1333,12 @@ private data class RemoteUpdateInfo(
     val versionName: String,
     val apkUrl: String
 )
+
+enum class UsbConnectionStatus {
+    DISCONNECTED,
+    CONNECTING,
+    CONNECTED,
+    CONNECT_FAILED,
+    ERROR
+}
 
