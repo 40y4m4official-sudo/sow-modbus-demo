@@ -29,6 +29,13 @@ Map conceptual components to concrete code locations.
 - `app/src/main/java/com/example/meterdemo/ui/AddMeterScreen.kt`
 - `app/src/main/java/com/example/meterdemo/ui/ScreenHeader.kt`
 
+### Localization
+
+- `app/src/main/java/com/example/meterdemo/localization/AppLanguage.kt`
+- `app/src/main/java/com/example/meterdemo/localization/AppLanguageManager.kt`
+- `app/src/main/res/values/strings.xml`
+- `app/src/main/res/values-ja/strings.xml`
+
 ### Meter Domain Model
 
 - `app/src/main/java/com/example/meterdemo/meter/model/SignalType.kt`

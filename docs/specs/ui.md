@@ -53,6 +53,27 @@ Supported display modes:
 
 ## Settings Screen
 
+### Header Actions
+
+Contains:
+- language icon button in the header
+- tap opens a dropdown menu of supported app languages
+- dropdown shows language names only
+- dropdown labels are fixed as `English`, `・ｽ・ｽ・ｽ{・ｽ・ｽ`, and future `・ｽ・ｽ・ｽ・ｽ`
+- back action uses the shared fixed-size icon button
+
+### Language Switching
+
+Current supported app languages:
+- English
+- Japanese
+
+Behavior:
+- selection is persisted locally
+- stored language is applied again on next startup
+- switching language updates resource-based UI strings
+- language names shown in the dropdown do not change with the active locale
+
 ### Sections Order
 
 Current order:
@@ -79,6 +100,7 @@ Contains:
 - connection status
 - refresh button
 - per-device permission/connect/disconnect actions
+- connection status label follows the selected UI language
 
 ### Logs Section
 
@@ -108,7 +130,7 @@ Contains:
 ## Shared Header Rules
 
 - back action uses a fixed-size arrow icon, not text
-- edit/delete/settings utility actions prefer fixed-size icons for layout stability
+- edit/delete/settings/language utility actions prefer fixed-size icons for layout stability
 - screen headers are kept outside the scrolling content region where appropriate
 
 ## Edit Meter Screen
@@ -118,6 +140,7 @@ Contains:
 - built-in presets are view-only
 - user-added meters are editable
 - delete mode allows multi-select deletion
+- all visible labels, hints, actions, and delete confirmation text follow the selected UI language via string resources
 
 ## Add Meter / Register Settings Screen
 
@@ -147,3 +170,4 @@ Contains:
 
 - `app/src/main/java/com/example/meterdemo/ui/*`
 - `app/src/main/java/com/example/meterdemo/viewmodel/MainViewModel.kt`
+- `app/src/main/java/com/example/meterdemo/localization/*`

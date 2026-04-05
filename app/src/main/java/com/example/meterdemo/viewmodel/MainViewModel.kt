@@ -10,6 +10,9 @@ import androidx.core.content.FileProvider
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.meterdemo.BuildConfig
+import com.example.meterdemo.R
+import com.example.meterdemo.localization.AppLanguage
+import com.example.meterdemo.localization.AppLanguageManager
 import com.example.meterdemo.logging.CommCategory
 import com.example.meterdemo.logging.CommLog
 import com.example.meterdemo.logging.CommLogger
@@ -58,6 +61,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val engine = ModbusRtuSlaveEngine(repository)
     private val logger = CommLogger()
     private val persistence = MeterPersistence(application)
+    private val appLanguageManager = AppLanguageManager(application)
     private val usbDeviceScanner = UsbDeviceScanner(application)
     private val usbSerialScanner = UsbSerialScanner(application)
     private val usbRequestFrameAssembler = UsbRequestFrameAssembler()
@@ -66,6 +70,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private var simulationJob: Job? = null
     private var lastSimulationTickElapsedRealtime: Long? = null
     private var mainViewMode: MainViewMode = MainViewMode.CARD
+    private var appLanguage: AppLanguage = appLanguageManager.getCurrentLanguage()
     private val usbSerialConnectionManager = UsbSerialConnectionManager(
         context = application,
         listener = object : UsbSerialConnectionManager.Listener {
@@ -86,7 +91,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 )
                 refreshUiState(
                     selectedPointIndex = _uiState.value.selectedPointIndex,
-                    usbConnectionStatus = "Connected",
+                    usbConnectionStatus = UsbConnectionStatus.CONNECTED,
                     connectedUsbDeviceName = deviceName
                 )
                 refreshUsbDevices()
@@ -99,7 +104,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 usbRequestFrameAssembler.clear()
                 refreshUiState(
                     selectedPointIndex = _uiState.value.selectedPointIndex,
-                    usbConnectionStatus = reason,
+                    usbConnectionStatus = UsbConnectionStatus.DISCONNECTED,
                     connectedUsbDeviceName = null
                 )
                 refreshUsbDevices()
@@ -114,7 +119,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 logger.error(message, CommCategory.USB)
                 refreshUiState(
                     selectedPointIndex = _uiState.value.selectedPointIndex,
-                    usbConnectionStatus = "Error"
+                    usbConnectionStatus = UsbConnectionStatus.ERROR
                 )
             }
         }
@@ -208,6 +213,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         refreshUiState(selectedPointIndex = _uiState.value.selectedPointIndex)
     }
 
+    fun selectAppLanguage(language: AppLanguage) {
+        if (language == appLanguage) return
+        appLanguage = language
+        appLanguageManager.setLanguage(language)
+        refreshUiState(selectedPointIndex = _uiState.value.selectedPointIndex)
+    }
+
     fun selectProfile(modelId: String) {
         val profile = allProfiles().firstOrNull { it.modelId == modelId }
         if (profile == null) {
@@ -275,7 +287,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val profile = repository.getProfile()
         refreshUiState(
             selectedPointIndex = _uiState.value.selectedPointIndex,
-            usbConnectionStatus = "Connecting...",
+            usbConnectionStatus = UsbConnectionStatus.CONNECTING,
             connectedUsbDeviceName = _uiState.value.connectedUsbDeviceName
         )
         if (!usbSerialConnectionManager.connect(
@@ -287,7 +299,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         ) {
             refreshUiState(
                 selectedPointIndex = _uiState.value.selectedPointIndex,
-                usbConnectionStatus = "Connect failed",
+                usbConnectionStatus = UsbConnectionStatus.CONNECT_FAILED,
                 connectedUsbDeviceName = null
             )
         }
@@ -677,8 +689,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         slaveIdInput: String? = null,
         usbDevices: List<UsbDeviceSummary> = _uiState.value.usbDevices,
         usbSerialDevices: List<UsbSerialDeviceSummary> = _uiState.value.usbSerialDevices,
-        usbConnectionStatus: String = _uiState.value.usbConnectionStatus,
+        usbConnectionStatus: UsbConnectionStatus = _uiState.value.usbConnectionStatus,
         connectedUsbDeviceName: String? = _uiState.value.connectedUsbDeviceName,
+        appLanguage: AppLanguage = _uiState.value.appLanguage,
         editingExistingUserMeter: Boolean = _uiState.value.editingExistingUserMeter,
         draftReadOnly: Boolean = _uiState.value.draftReadOnly,
         selectedEditableUserModelId: String? = _uiState.value.selectedEditableUserModelId,
@@ -710,6 +723,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             usbSerialDevices = usbSerialDevices,
             usbConnectionStatus = usbConnectionStatus,
             connectedUsbDeviceName = connectedUsbDeviceName,
+            appLanguage = appLanguage,
             points = snapshots,
             selectedPointIndex = safeIndex,
             selectedPoint = selectedPoint,
@@ -740,8 +754,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             profileStopBits = repository.getProfile().stopBits,
             usbDevices = usbDeviceScanner.scan(),
             usbSerialDevices = usbSerialScanner.scan(),
-            usbConnectionStatus = "Disconnected",
+            usbConnectionStatus = UsbConnectionStatus.DISCONNECTED,
             connectedUsbDeviceName = null,
+            appLanguage = appLanguage,
             points = snapshots,
             selectedPointIndex = 0,
             selectedPoint = selectedPoint,
@@ -751,7 +766,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             appUpdate = AppUpdateUiState(
                 currentVersionName = currentAppVersion.versionName,
                 currentVersionCode = currentAppVersion.versionCode,
-                statusMessage = "Ready to check for updates"
+                statusMessage = appString(R.string.settings_update_ready)
             ),
             editingExistingUserMeter = false,
             draftReadOnly = false,
@@ -878,7 +893,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             selectedPointIndex = _uiState.value.selectedPointIndex,
             appUpdate = currentUpdateState.copy(
                 isChecking = true,
-                statusMessage = "Checking for updates..."
+                statusMessage = appString(R.string.update_status_checking)
             )
         )
 
@@ -890,7 +905,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val nextState = when {
                 result == null -> currentUpdateState.copy(
                     isChecking = false,
-                    statusMessage = "Failed to retrieve update information"
+                    statusMessage = appString(R.string.update_status_failed_fetch)
                 )
                 result.versionCode > currentAppVersion.versionCode -> currentUpdateState.copy(
                     isChecking = false,
@@ -898,7 +913,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     latestVersionCode = result.versionCode,
                     latestVersionName = result.versionName,
                     apkUrl = result.apkUrl,
-                    statusMessage = "Update available: ${result.versionName}"
+                    statusMessage = appString(R.string.update_status_available, result.versionName)
                 )
                 else -> currentUpdateState.copy(
                     isChecking = false,
@@ -906,7 +921,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     latestVersionCode = result.versionCode,
                     latestVersionName = result.versionName,
                     apkUrl = result.apkUrl,
-                    statusMessage = "You are already on the latest version"
+                    statusMessage = appString(R.string.update_status_latest)
                 )
             }
 
@@ -924,7 +939,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             appUpdate = currentUpdateState.copy(
                 isDownloading = true,
                 downloadProgressPercent = 0,
-                statusMessage = "Downloading update..."
+                statusMessage = appString(R.string.update_status_downloading)
             )
         )
 
@@ -945,9 +960,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                             isDownloading = true,
                             downloadProgressPercent = progress,
                             statusMessage = if (progress >= 0) {
-                                "Downloading update... $progress%"
+                                appString(R.string.update_status_downloading_progress, progress)
                             } else {
-                                "Downloading update..."
+                                appString(R.string.update_status_downloading)
                             }
                         )
                     )
@@ -957,7 +972,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             if (!success) {
                 val failedState = _uiState.value.appUpdate.copy(
                     isDownloading = false,
-                    statusMessage = "Failed to download update"
+                    statusMessage = appString(R.string.update_status_failed_download)
                 )
                 refreshUiState(
                     selectedPointIndex = _uiState.value.selectedPointIndex,
@@ -969,7 +984,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val readyState = _uiState.value.appUpdate.copy(
                 isDownloading = false,
                 downloadProgressPercent = 100,
-                statusMessage = "Downloaded ${latestVersionName ?: "update"}, launching installer"
+                statusMessage = appString(
+                    R.string.update_status_downloaded,
+                    latestVersionName ?: appString(R.string.update_generic_label)
+                )
             )
             refreshUiState(
                 selectedPointIndex = _uiState.value.selectedPointIndex,
@@ -1063,7 +1081,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             refreshUiState(
                 selectedPointIndex = _uiState.value.selectedPointIndex,
                 appUpdate = current.copy(
-                    statusMessage = "Allow installs from this app, then tap download again"
+                    statusMessage = appString(R.string.update_status_allow_install)
                 )
             )
             return
@@ -1220,6 +1238,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    private fun appString(resId: Int, vararg args: Any): String {
+        return getApplication<Application>().getString(resId, *args)
+    }
 }
 
 private fun resolveCurrentAppVersion(
@@ -1245,8 +1266,9 @@ data class MainUiState(
     val profileStopBits: Int,
     val usbDevices: List<UsbDeviceSummary>,
     val usbSerialDevices: List<UsbSerialDeviceSummary>,
-    val usbConnectionStatus: String,
+    val usbConnectionStatus: UsbConnectionStatus,
     val connectedUsbDeviceName: String?,
+    val appLanguage: AppLanguage,
     val points: List<MeterValueSnapshot>,
     val selectedPointIndex: Int,
     val selectedPoint: MeterValueSnapshot?,
@@ -1311,3 +1333,12 @@ private data class RemoteUpdateInfo(
     val versionName: String,
     val apkUrl: String
 )
+
+enum class UsbConnectionStatus {
+    DISCONNECTED,
+    CONNECTING,
+    CONNECTED,
+    CONNECT_FAILED,
+    ERROR
+}
+

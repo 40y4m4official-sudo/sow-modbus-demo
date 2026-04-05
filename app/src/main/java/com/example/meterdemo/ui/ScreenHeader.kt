@@ -11,10 +11,12 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.example.meterdemo.R
 
 @Composable
 fun ScreenHeader(
@@ -42,7 +44,7 @@ fun ScreenHeader(
             if (onBack != null) {
                 HeaderIconButton(
                     onClick = onBack,
-                    contentDescription = "Back"
+                    contentDescription = stringResource(R.string.back_button_description)
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Outlined.ArrowBack,

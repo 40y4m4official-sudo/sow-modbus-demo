@@ -23,7 +23,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.example.meterdemo.R
 import com.example.meterdemo.logging.CommLog
 import com.example.meterdemo.logging.LogExporter
 import java.text.SimpleDateFormat
@@ -46,7 +48,7 @@ fun LogsScreen(
             .padding(20.dp)
     ) {
         ScreenHeader(
-            title = "Communication Logs",
+            title = stringResource(R.string.logs_title),
             onBack = onBack
         )
 
@@ -57,7 +59,7 @@ fun LogsScreen(
             horizontalArrangement = Arrangement.spacedBy(12.dp, alignment = Alignment.End)
         ) {
             Text(
-                text = "Stored: ${logs.size}",
+                text = stringResource(R.string.logs_stored, logs.size),
                 modifier = Modifier.weight(1f).align(Alignment.CenterVertically),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -66,20 +68,20 @@ fun LogsScreen(
                 onClick = onOpenSummary,
                 enabled = logs.isNotEmpty()
             ) {
-                Text("Summary")
+                Text(stringResource(R.string.logs_summary))
             }
             HeaderIconButton(
                 onClick = {
                     val exportUri = LogExporter.exportLogs(context, logs)
                     val shareIntent = Intent(Intent.ACTION_SEND).apply {
                         type = "text/plain"
-                        putExtra(Intent.EXTRA_SUBJECT, "Meter Demo Logs")
+                        putExtra(Intent.EXTRA_SUBJECT, context.getString(R.string.logs_share_subject))
                         putExtra(Intent.EXTRA_STREAM, exportUri)
                         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                     }
-                    context.startActivity(Intent.createChooser(shareIntent, "Export logs"))
+                    context.startActivity(Intent.createChooser(shareIntent, context.getString(R.string.logs_export_chooser)))
                 },
-                contentDescription = "Export logs"
+                contentDescription = stringResource(R.string.logs_export_description)
             ) {
                 Icon(
                     imageVector = Icons.Outlined.FileUpload,
@@ -88,7 +90,7 @@ fun LogsScreen(
             }
             HeaderIconButton(
                 onClick = onClearLogs,
-                contentDescription = "Clear logs"
+                contentDescription = stringResource(R.string.logs_clear_description)
             ) {
                 Icon(
                     imageVector = Icons.Outlined.DeleteSweep,
@@ -98,7 +100,7 @@ fun LogsScreen(
         }
 
         if (logs.isEmpty()) {
-            Text("No logs yet")
+            Text(stringResource(R.string.logs_empty))
             return
         }
 

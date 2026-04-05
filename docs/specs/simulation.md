@@ -40,16 +40,16 @@ Target signal types:
 Behavior:
 - random walk around initial displayed value
 - allowed range:
-  - initial value }10%
+  - initial value ï¿½}10%
 - each tick adds a small delta within that range
 - value is clamped to min/max range
 
 ## Current Behavior
 
 Target signal types:
-- A‘Š“d—¬
-- B‘Š“d—¬
-- C‘Š“d—¬
+- Aï¿½ï¿½ï¿½dï¿½ï¿½
+- Bï¿½ï¿½ï¿½dï¿½ï¿½
+- Cï¿½ï¿½ï¿½dï¿½ï¿½
 
 Behavior uses a shared signed base current for all three phases.
 
@@ -66,7 +66,7 @@ State held:
 
 - `baseValue` stays fixed between major events
 - each phase varies independently within:
-  - `baseValue }5%`
+  - `baseValue ï¿½}5%`
 - this keeps phases close together while still giving small differences
 
 ### Major Events
@@ -81,14 +81,14 @@ State held:
   - random `1..10` ticks
 - during transition:
   - `baseValue` moves toward `targetBaseValue`
-  - each phase still varies within `baseValue }5%`
+  - each phase still varies within `baseValue ï¿½}5%`
 - after transition completes:
   - next event interval is generated again from `60..200`
 
 ## Power Factor Behavior
 
 Target signal type:
-- —Í—¦
+- ï¿½Í—ï¿½
 
 Behavior:
 - stable at base value most of the time

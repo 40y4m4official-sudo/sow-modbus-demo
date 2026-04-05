@@ -18,10 +18,15 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Translate
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -32,8 +37,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
+import com.example.meterdemo.R
 import com.example.meterdemo.logging.CommLog
+import com.example.meterdemo.localization.AppLanguage
+import com.example.meterdemo.viewmodel.MainViewMode
 import com.example.meterdemo.viewmodel.MainUiState
+import com.example.meterdemo.viewmodel.UsbConnectionStatus
 
 @Composable
 fun SettingsScreen(
@@ -45,6 +55,7 @@ fun SettingsScreen(
     onSlaveIdChange: (String) -> Unit,
     onApplySlaveId: () -> Unit,
     onToggleMainViewMode: () -> Unit,
+    onLanguageSelected: (AppLanguage) -> Unit,
     onOpenLogs: () -> Unit,
     onRefreshUsbDevices: () -> Unit,
     onRequestUsbPermission: (String) -> Unit,
@@ -56,16 +67,53 @@ fun SettingsScreen(
 ) {
     var presetExpanded by remember { mutableStateOf(false) }
     var customHex by remember { mutableStateOf("") }
+    var languageExpanded by remember { mutableStateOf(false) }
+    val connectionStatusLabel = when (uiState.usbConnectionStatus) {
+        UsbConnectionStatus.DISCONNECTED -> stringResource(R.string.usb_status_disconnected)
+        UsbConnectionStatus.CONNECTING -> stringResource(R.string.usb_status_connecting)
+        UsbConnectionStatus.CONNECTED -> stringResource(R.string.usb_status_connected)
+        UsbConnectionStatus.CONNECT_FAILED -> stringResource(R.string.usb_status_connect_failed)
+        UsbConnectionStatus.ERROR -> stringResource(R.string.usb_status_error)
+    }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .safeDrawingPadding()
-            .padding(20.dp)
+        .padding(20.dp)
     ) {
         ScreenHeader(
-            title = "Settings",
-            onBack = onBack
+            title = stringResource(R.string.settings_title),
+            onBack = onBack,
+            actions = {
+                Box {
+                    HeaderIconButton(
+                        onClick = { languageExpanded = true },
+                        contentDescription = stringResource(R.string.language_button_description)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Translate,
+                            contentDescription = null
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = languageExpanded,
+                        onDismissRequest = { languageExpanded = false }
+                    ) {
+                        AppLanguage.entries.forEach { language ->
+                            DropdownMenuItem(
+                                text = {
+                                    Text(text = language.fixedLabel)
+                                },
+                                onClick = {
+                                    languageExpanded = false
+                                    onLanguageSelected(language)
+                                }
+                            )
+                        }
+                    }
+                }
+            }
         )
 
         Spacer(modifier = Modifier.height(20.dp))
@@ -78,7 +126,7 @@ fun SettingsScreen(
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        text = "Meter Preset",
+                        text = stringResource(R.string.settings_meter_preset),
                         style = MaterialTheme.typography.titleMedium
                     )
                     Spacer(modifier = Modifier.height(12.dp))
@@ -135,7 +183,7 @@ fun SettingsScreen(
                                                     .padding(horizontal = 8.dp, vertical = 2.dp)
                                             ) {
                                                 Text(
-                                                    text = "added",
+                                                    text = stringResource(R.string.settings_added_tag),
                                                     style = MaterialTheme.typography.labelSmall
                                                 )
                                             }
@@ -151,13 +199,13 @@ fun SettingsScreen(
                         onClick = onOpenEditMeter,
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("Edit Meter")
+                        Text(stringResource(R.string.settings_edit_meter))
                     }
                     Spacer(modifier = Modifier.height(12.dp))
                     OutlinedTextField(
                         value = uiState.slaveIdInput,
                         onValueChange = onSlaveIdChange,
-                        label = { Text("Slave Address") },
+                        label = { Text(stringResource(R.string.settings_slave_address)) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -166,14 +214,22 @@ fun SettingsScreen(
                         onClick = onApplySlaveId,
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("Apply Slave Address")
+                        Text(stringResource(R.string.settings_apply_slave_address))
                     }
                     Spacer(modifier = Modifier.height(12.dp))
                     OutlinedButton(
                         onClick = onToggleMainViewMode,
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("Main View: ${uiState.mainViewMode.label}")
+                        Text(
+                            stringResource(
+                                R.string.settings_main_view,
+                                when (uiState.mainViewMode) {
+                                    MainViewMode.CARD -> stringResource(R.string.main_view_card)
+                                    MainViewMode.LIST -> stringResource(R.string.main_view_list)
+                                }
+                            )
+                        )
                     }
                 }
             }
@@ -183,34 +239,39 @@ fun SettingsScreen(
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        text = "USB-RS485",
+                        text = stringResource(R.string.settings_usb_title),
                         style = MaterialTheme.typography.titleMedium
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         text = if (uiState.usbDevices.isEmpty()) {
-                            "No USB devices detected yet."
+                            stringResource(R.string.settings_no_usb_devices)
                         } else {
-                            "Detected devices: ${uiState.usbDevices.size}"
+                            stringResource(R.string.settings_detected_devices, uiState.usbDevices.size)
                         },
                         style = MaterialTheme.typography.bodyMedium
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "Profile serial: ${uiState.profileBaudRate} 8${uiState.profileParity.label.first()}${uiState.profileStopBits}",
+                        text = stringResource(
+                            R.string.settings_profile_serial,
+                            uiState.profileBaudRate,
+                            uiState.profileParity.label.first().toString(),
+                            uiState.profileStopBits
+                        ),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "Connection: ${uiState.usbConnectionStatus}",
+                        text = stringResource(R.string.settings_connection_status, connectionStatusLabel),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     uiState.connectedUsbDeviceName?.let { deviceName ->
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Connected device: $deviceName",
+                            text = stringResource(R.string.settings_connected_device, deviceName),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -220,14 +281,14 @@ fun SettingsScreen(
                         onClick = onRefreshUsbDevices,
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("Refresh USB Devices")
+                        Text(stringResource(R.string.settings_refresh_usb_devices))
                     }
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
                         text = if (uiState.usbSerialDevices.isEmpty()) {
-                            "No supported USB serial adapters detected yet. SH-U11C should appear here as an FTDI serial device when connected."
+                            stringResource(R.string.settings_no_supported_usb_serial)
                         } else {
-                            "USB serial adapters: ${uiState.usbSerialDevices.size}"
+                            stringResource(R.string.settings_usb_serial_adapters, uiState.usbSerialDevices.size)
                         },
                         style = MaterialTheme.typography.bodyMedium
                     )
@@ -244,7 +305,12 @@ fun SettingsScreen(
                                     )
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Text(
-                                        text = "VID:PID ${device.vendorId.toString(16).padStart(4, '0').uppercase()}:${device.productId.toString(16).padStart(4, '0').uppercase()} / permission=${device.hasPermission}",
+                                        text = stringResource(
+                                            R.string.settings_vid_pid_permission,
+                                            device.vendorId.toString(16).padStart(4, '0').uppercase(),
+                                            device.productId.toString(16).padStart(4, '0').uppercase(),
+                                            device.hasPermission.toString()
+                                        ),
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -263,14 +329,14 @@ fun SettingsScreen(
                                             onClick = { onRequestUsbPermission(device.deviceName) },
                                             modifier = Modifier.weight(1f)
                                         ) {
-                                            Text("Permission")
+                                            Text(stringResource(R.string.settings_permission))
                                         }
                                         if (isConnected) {
                                             Button(
                                                 onClick = onDisconnectUsbDevice,
                                                 modifier = Modifier.weight(1f)
                                             ) {
-                                                Text("Disconnect")
+                                                Text(stringResource(R.string.settings_disconnect))
                                             }
                                         } else {
                                             Button(
@@ -278,7 +344,7 @@ fun SettingsScreen(
                                                 modifier = Modifier.weight(1f),
                                                 enabled = device.hasPermission
                                             ) {
-                                                Text("Connect")
+                                                Text(stringResource(R.string.settings_connect))
                                             }
                                         }
                                     }
@@ -316,12 +382,12 @@ fun SettingsScreen(
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        text = "Logs",
+                        text = stringResource(R.string.settings_logs_title),
                         style = MaterialTheme.typography.titleMedium
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "Entries: ${logs.size}",
+                        text = stringResource(R.string.settings_log_entries, logs.size),
                         style = MaterialTheme.typography.bodyMedium
                     )
                     Spacer(modifier = Modifier.height(12.dp))
@@ -333,7 +399,7 @@ fun SettingsScreen(
                             onClick = onOpenLogs,
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Text("Open Logs")
+                            Text(stringResource(R.string.settings_open_logs))
                         }
                     }
                 }
@@ -344,12 +410,15 @@ fun SettingsScreen(
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        text = "Comm Test",
+                        text = stringResource(R.string.settings_comm_test_title),
                         style = MaterialTheme.typography.titleMedium
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "Current item: ${uiState.selectedPoint?.name ?: "-"}",
+                        text = stringResource(
+                            R.string.settings_current_item,
+                            uiState.selectedPoint?.name ?: "-"
+                        ),
                         style = MaterialTheme.typography.bodyMedium
                     )
                     Spacer(modifier = Modifier.height(12.dp))
@@ -357,14 +426,14 @@ fun SettingsScreen(
                         onClick = onSimulateRead,
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("Run 03H Read")
+                        Text(stringResource(R.string.settings_run_read))
                     }
                     Spacer(modifier = Modifier.height(12.dp))
                     OutlinedTextField(
                         value = customHex,
                         onValueChange = { customHex = it },
-                        label = { Text("Custom HEX Request") },
-                        placeholder = { Text("02 03 03 00 00 01 44 F8") },
+                        label = { Text(stringResource(R.string.settings_custom_hex_request)) },
+                        placeholder = { Text(stringResource(R.string.settings_custom_hex_placeholder)) },
                         modifier = Modifier.fillMaxWidth()
                     )
                     Spacer(modifier = Modifier.height(12.dp))
@@ -372,7 +441,7 @@ fun SettingsScreen(
                         onClick = { onSimulateCustomRequest(customHex) },
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("Send Custom Request")
+                        Text(stringResource(R.string.settings_send_custom_request))
                     }
                 }
             }
@@ -382,24 +451,24 @@ fun SettingsScreen(
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        text = "App Update",
+                        text = stringResource(R.string.settings_app_update_title),
                         style = MaterialTheme.typography.titleMedium
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "Current version: ${uiState.appUpdate.currentVersionName}",
+                        text = stringResource(R.string.settings_current_version, uiState.appUpdate.currentVersionName),
                         style = MaterialTheme.typography.bodyMedium
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = uiState.appUpdate.statusMessage.ifBlank { "Ready to check for updates" },
+                        text = uiState.appUpdate.statusMessage.ifBlank { stringResource(R.string.settings_update_ready) },
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     uiState.appUpdate.latestVersionName?.let { latestVersion ->
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Latest version: $latestVersion",
+                            text = stringResource(R.string.settings_latest_version, latestVersion),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -408,7 +477,7 @@ fun SettingsScreen(
                         if (uiState.appUpdate.isDownloading || progress > 0) {
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = "Download progress: $progress%",
+                                text = stringResource(R.string.settings_download_progress, progress),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -422,10 +491,10 @@ fun SettingsScreen(
                     ) {
                         Text(
                             when {
-                                uiState.appUpdate.isDownloading -> "Downloading..."
-                                uiState.appUpdate.updateAvailable -> "Download and Install Update"
-                                uiState.appUpdate.isChecking -> "Checking..."
-                                else -> "Check for Update"
+                                uiState.appUpdate.isDownloading -> stringResource(R.string.settings_downloading)
+                                uiState.appUpdate.updateAvailable -> stringResource(R.string.settings_download_and_install_update)
+                                uiState.appUpdate.isChecking -> stringResource(R.string.settings_checking)
+                                else -> stringResource(R.string.settings_check_for_update)
                             }
                         )
                     }
@@ -434,3 +503,5 @@ fun SettingsScreen(
         }
     }
 }
+
+
