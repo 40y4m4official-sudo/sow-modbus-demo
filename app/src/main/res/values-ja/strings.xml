@@ -99,4 +99,20 @@
     <string name="summary_count">x%1$d</string>
     <string name="summary_slave_fc_qty">Slave %1$d / FC %2$s / Qty %3$d</string>
     <string name="summary_last_seen">&#x6700;&#x7D42;&#x691C;&#x51FA;: %1$s</string>
+
+    <string name="edit_meter_title">&#x30E1;&#x30FC;&#x30BF;&#x30FC;&#x7DE8;&#x96C6;</string>
+    <string name="edit_meter_delete_mode">&#x524A;&#x9664;&#x30E2;&#x30FC;&#x30C9;</string>
+    <string name="edit_meter_delete_dialog_title">&#x30E1;&#x30FC;&#x30BF;&#x30FC;&#x3092;&#x524A;&#x9664;&#x3057;&#x307E;&#x3059;&#x304B;&#xFF1F;</string>
+    <string name="edit_meter_delete_dialog_message">&#x9078;&#x629E;&#x3057;&#x305F;&#x30E6;&#x30FC;&#x30B6;&#x30FC;&#x30E1;&#x30FC;&#x30BF;&#x30FC; %1$d &#x4EF6;&#x3092;&#x524A;&#x9664;&#x3057;&#x307E;&#x3059;&#x304B;&#xFF1F;</string>
+    <string name="edit_meter_delete">&#x524A;&#x9664;</string>
+    <string name="edit_meter_cancel">&#x30AD;&#x30E3;&#x30F3;&#x30BB;&#x30EB;</string>
+    <string name="edit_meter_delete_mode_hint">&#x524A;&#x9664;&#x3059;&#x308B;&#x30E6;&#x30FC;&#x30B6;&#x30FC;&#x30E1;&#x30FC;&#x30BF;&#x30FC;&#x3092;&#x9078;&#x629E;&#x3057;&#x3066;&#x304F;&#x3060;&#x3055;&#x3044;&#x3002;</string>
+    <string name="edit_meter_default_hint">&#x30E6;&#x30FC;&#x30B6;&#x30FC;&#x30E1;&#x30FC;&#x30BF;&#x30FC;&#x3092;&#x30BF;&#x30C3;&#x30D7;&#x3059;&#x308B;&#x3068;&#x7DE8;&#x96C6;&#x3067;&#x304D;&#x307E;&#x3059;&#x3002;&#x30D7;&#x30EA;&#x30BB;&#x30C3;&#x30C8;&#x306F;&#x4E0B;&#x306B;&#x8868;&#x793A;&#x3057;&#x3066;&#x95B2;&#x89A7;&#x306E;&#x307F;&#x3067;&#x304D;&#x307E;&#x3059;&#x3002;</string>
+    <string name="edit_meter_empty">&#x8FFD;&#x52A0;&#x3055;&#x308C;&#x305F;&#x30E1;&#x30FC;&#x30BF;&#x30FC;&#x306F;&#x307E;&#x3060;&#x3042;&#x308A;&#x307E;&#x305B;&#x3093;&#x3002;</string>
+    <string name="edit_meter_action_edit">&#x7DE8;&#x96C6;</string>
+    <string name="edit_meter_action_view">&#x8868;&#x793A;</string>
+    <string name="edit_meter_show_presets">&#x30D7;&#x30EA;&#x30BB;&#x30C3;&#x30C8;&#x3092;&#x8868;&#x793A;</string>
+    <string name="edit_meter_hide_presets">&#x30D7;&#x30EA;&#x30BB;&#x30C3;&#x30C8;&#x3092;&#x975E;&#x8868;&#x793A;</string>
+    <string name="edit_meter_delete_selected">&#x9078;&#x629E;&#x3057;&#x305F;&#x30E1;&#x30FC;&#x30BF;&#x30FC;&#x3092;&#x524A;&#x9664;</string>
+    <string name="edit_meter_add_meter">&#x30E1;&#x30FC;&#x30BF;&#x30FC;&#x3092;&#x8FFD;&#x52A0;</string>
 </resources>

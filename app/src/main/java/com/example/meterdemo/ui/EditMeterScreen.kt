@@ -36,6 +36,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
+import com.example.meterdemo.R
 import com.example.meterdemo.viewmodel.MainUiState
 
 @Composable
@@ -55,8 +57,15 @@ fun EditMeterScreen(
     if (showDeleteDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
-            title = { Text("Delete meters?") },
-            text = { Text("Delete ${selectedIds.size} selected user meter(s)?") },
+            title = { Text(stringResource(R.string.edit_meter_delete_dialog_title)) },
+            text = {
+                Text(
+                    stringResource(
+                        R.string.edit_meter_delete_dialog_message,
+                        selectedIds.size
+                    )
+                )
+            },
             confirmButton = {
                 Button(onClick = {
                     onDeleteMeters(selectedIds)
@@ -64,12 +73,12 @@ fun EditMeterScreen(
                     deleteMode = false
                     showDeleteDialog = false
                 }) {
-                    Text("Delete")
+                    Text(stringResource(R.string.edit_meter_delete))
                 }
             },
             dismissButton = {
                 OutlinedButton(onClick = { showDeleteDialog = false }) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.edit_meter_cancel))
                 }
             }
         )
@@ -83,7 +92,7 @@ fun EditMeterScreen(
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
             ScreenHeader(
-                title = "Edit Meter",
+                title = stringResource(R.string.edit_meter_title),
                 onBack = onBack,
                 actions = {
                     HeaderIconButton(
@@ -91,7 +100,7 @@ fun EditMeterScreen(
                             deleteMode = !deleteMode
                             selectedIds = emptySet()
                         },
-                        contentDescription = "Delete mode"
+                        contentDescription = stringResource(R.string.edit_meter_delete_mode)
                     ) {
                         Icon(
                             imageVector = Icons.Outlined.Delete,
@@ -105,9 +114,9 @@ fun EditMeterScreen(
 
             Text(
                 text = if (deleteMode) {
-                    "Select the user meters to remove."
+                    stringResource(R.string.edit_meter_delete_mode_hint)
                 } else {
-                    "Tap a user meter to edit it. Presets can be shown below for view-only details."
+                    stringResource(R.string.edit_meter_default_hint)
                 },
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -131,7 +140,7 @@ fun EditMeterScreen(
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                text = "No added meters yet.",
+                                text = stringResource(R.string.edit_meter_empty),
                                 style = MaterialTheme.typography.titleMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -142,7 +151,7 @@ fun EditMeterScreen(
                         MeterProfileCard(
                             title = profile.displayName,
                             subtitle = profile.modelId,
-                            actionText = if (deleteMode) "" else "Edit",
+                            actionText = if (deleteMode) "" else stringResource(R.string.edit_meter_action_edit),
                             deleteMode = deleteMode,
                             checked = selectedIds.contains(profile.modelId),
                             onCheckedChange = { checked ->
@@ -167,7 +176,13 @@ fun EditMeterScreen(
                         onClick = { showPresets = !showPresets },
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text(if (showPresets) "Hide Presets" else "Show Presets")
+                        Text(
+                            if (showPresets) {
+                                stringResource(R.string.edit_meter_hide_presets)
+                            } else {
+                                stringResource(R.string.edit_meter_show_presets)
+                            }
+                        )
                     }
                 }
                 if (showPresets) {
@@ -175,7 +190,7 @@ fun EditMeterScreen(
                         MeterProfileCard(
                             title = profile.displayName,
                             subtitle = profile.modelId,
-                            actionText = "View",
+                            actionText = stringResource(R.string.edit_meter_action_view),
                             deleteMode = false,
                             checked = false,
                             onCheckedChange = {},
@@ -203,7 +218,13 @@ fun EditMeterScreen(
             enabled = !deleteMode || selectedIds.isNotEmpty(),
             shape = RoundedCornerShape(24.dp)
         ) {
-            Text(if (deleteMode) "Delete Selected Meters" else "Add Meter")
+            Text(
+                if (deleteMode) {
+                    stringResource(R.string.edit_meter_delete_selected)
+                } else {
+                    stringResource(R.string.edit_meter_add_meter)
+                }
+            )
         }
     }
 }

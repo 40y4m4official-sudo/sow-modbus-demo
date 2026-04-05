@@ -99,4 +99,20 @@
     <string name="summary_count">x%1$d</string>
     <string name="summary_slave_fc_qty">Slave %1$d / FC %2$s / Qty %3$d</string>
     <string name="summary_last_seen">Last seen %1$s</string>
+
+    <string name="edit_meter_title">Edit Meter</string>
+    <string name="edit_meter_delete_mode">Delete mode</string>
+    <string name="edit_meter_delete_dialog_title">Delete meters?</string>
+    <string name="edit_meter_delete_dialog_message">Delete %1$d selected user meter(s)?</string>
+    <string name="edit_meter_delete">Delete</string>
+    <string name="edit_meter_cancel">Cancel</string>
+    <string name="edit_meter_delete_mode_hint">Select the user meters to remove.</string>
+    <string name="edit_meter_default_hint">Tap a user meter to edit it. Presets can be shown below for view-only details.</string>
+    <string name="edit_meter_empty">No added meters yet.</string>
+    <string name="edit_meter_action_edit">Edit</string>
+    <string name="edit_meter_action_view">View</string>
+    <string name="edit_meter_show_presets">Show Presets</string>
+    <string name="edit_meter_hide_presets">Hide Presets</string>
+    <string name="edit_meter_delete_selected">Delete Selected Meters</string>
+    <string name="edit_meter_add_meter">Add Meter</string>
 </resources>

@@ -59,7 +59,7 @@ Contains:
 - language icon button in the header
 - tap opens a dropdown menu of supported app languages
 - dropdown shows language names only
-- dropdown labels are fixed as `English`, `���{��`, and future `����`
+- dropdown labels are fixed as `English`, `・ｽ・ｽ・ｽ{・ｽ・ｽ`, and future `・ｽ・ｽ・ｽ・ｽ`
 - back action uses the shared fixed-size icon button
 
 ### Language Switching
@@ -140,6 +140,7 @@ Contains:
 - built-in presets are view-only
 - user-added meters are editable
 - delete mode allows multi-select deletion
+- all visible labels, hints, actions, and delete confirmation text follow the selected UI language via string resources
 
 ## Add Meter / Register Settings Screen
 
