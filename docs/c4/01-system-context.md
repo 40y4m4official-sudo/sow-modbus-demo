@@ -1,105 +1,107 @@
-# System Context
+# システムコンテキスト
 
-## Purpose
+## 目的
 
-Describe the overall system boundary of the SOW Modbus Demo app and its external actors.
+`SOW Modbus Demo` アプリのシステム境界と、外部に存在する利用者・接続先を整理する。
 
-## System
+## システム
 
-- System name:
+- システム名
   - `SOW Modbus Demo`
-- Primary responsibility:
-  - Android app that simulates electric meter behavior and responds as a Modbus RTU slave over USB-RS485.
-- Main user value:
-  - Reproduce meter presets, manual value control, simulated value movement, communication logging, and APK self-update without Google Play in-app updates.
+- 主な責務
+  - Android アプリとして電力メーターの挙動を模擬し、USB-RS485 経由で Modbus RTU スレーブ応答を返す
+- 利用価値
+  - メータープリセット再現
+  - 手動値変更
+  - 自動値変動
+  - 通信ログ確認
+  - Google Play を使わない APK 更新
 
-## External Actors / Systems
+## 外部アクター / 外部システム
 
-### Operator
+### オペレーター
 
-- Uses the Android UI to:
-  - choose a built-in preset
-  - add/edit user-defined meters
-  - change displayed/current values
-  - start/stop simulation
-  - inspect logs and summaries
-  - trigger APK update checks
+- Android UI を使って以下を行う
+  - プリセット選択
+  - ユーザー定義メーターの追加 / 編集
+  - 表示値 / 現在値の変更
+  - 自動シミュレーションの開始 / 停止
+  - ログと集計の確認
+  - APK 更新確認
 
-### External Modbus Master
+### 外部 Modbus マスター
 
-- Reads Modbus RTU registers from the Android device through RS485.
-- Typical examples:
+- RS485 経由で Android 端末の Modbus RTU レジスタを読み取る
+- 代表例
   - SmartLogger
   - QModMaster
-  - other Modbus master equipment under test
+  - そのほか評価対象の Modbus マスター機器
 
 ### SmartLogger
 
-- High-priority real-world compatibility target.
-- Often performs block reads rather than single-register reads.
-- Drives several design choices:
-  - fragmented USB frame reassembly
-  - zero-fill inside configured active address range
-  - preset tuning by measured compatibility
+- 実機互換性確認における最優先ターゲット
+- 単体読取ではなくブロック読取を行うことが多い
+- 以下の設計判断へ影響している
+  - USB 受信分割の再同期
+  - 有効アドレス範囲内の未定義レジスタを `0x0000` で返す仕様
+  - プリセット初期値やレジスタ構成の互換調整
 
 ### QModMaster
 
-- PC-based manual Modbus master.
-- Used mainly for:
-  - direct register verification
-  - preset debugging
-  - comparing real device and app responses
+- PC 側で使う手動 Modbus マスター
+- 主な用途
+  - レジスタ読取の直接確認
+  - プリセット調整
+  - 実機レスポンスとアプリレスポンスの比較
 
-### USB-RS485 Adapter
+### USB-RS485 変換アダプタ
 
-- Physical bridge between Android USB host and RS485 line.
-- Current target adapter family:
-  - FTDI-based devices such as DSD TECH SH-U11C
+- Android USB ホストと RS485 線の物理ブリッジ
+- 現在の主対象
+  - FTDI 系アダプタ
+  - 例: DSD TECH SH-U11C
 
-### Public Update Metadata
+### 公開更新メタデータ
 
-- Static JSON file hosted from the public repository.
-- Tells the app:
-  - latest `versionCode`
-  - latest `versionName`
-  - direct APK asset URL
+- public リポジトリ上の静的 JSON
+- アプリへ以下を知らせる
+  - 最新 `versionCode`
+  - 最新 `versionName`
+  - APK 直リンク
 
 ### GitHub Releases
 
-- Hosts public signed APK assets for download.
-- Used instead of Google Play in-app update APIs.
+- 署名済み APK asset の公開配布先
+- Google Play In-App Update API の代替として利用する
 
-## Key Relationships
+## 主要な関係
 
-1. Operator configures or edits a meter profile in the Android app.
-2. External Modbus master polls the Android device through RS485.
-3. The app returns register values from:
-   - current preset
-   - current raw values
-   - simulation engine output
-4. The app logs USB / Modbus activity and can export logs.
-5. The app checks public update metadata, downloads a newer APK, and launches the installer through `FileProvider`.
+1. オペレーターが Android アプリでメータープロファイルを設定する
+2. 外部マスターが RS485 経由でレジスタを読み取る
+3. アプリは現在のプリセット、現在値、シミュレーション結果に基づいてレスポンスを返す
+4. アプリは USB / Modbus 通信をログ化し、必要に応じてエクスポートする
+5. アプリは公開更新 JSON を参照し、新しい APK をダウンロードして `FileProvider` 経由でインストーラを起動する
 
-## System Boundary Notes
+## システム境界メモ
 
-Inside the app boundary:
-- UI and navigation
-- preset management
-- user-defined meter storage
-- Modbus slave engine
-- USB serial integration
-- simulation engine
-- logging and export
-- direct APK update flow
+アプリ内部に含むもの:
+- UI と画面遷移
+- プリセット管理
+- ユーザー定義メーター保存
+- Modbus スレーブエンジン
+- USB シリアル連携
+- 値変動シミュレーション
+- ログ保存 / 集計 / エクスポート
+- APK 直接更新
 
-Outside the app boundary:
-- external masters and test tools
-- physical USB/RS485 hardware
-- GitHub hosting for update metadata and release assets
+アプリ外部にあるもの:
+- 外部 Modbus マスター / 試験ツール
+- USB / RS485 ハードウェア
+- GitHub 上の更新 JSON と Release asset
 
-## Current Assumptions
+## 現在の前提
 
-- Only Modbus RTU over USB-RS485 is supported.
-- Supported read requests are profile-driven and limited to read-register functions.
-- APK update distribution is public and does not require authentication.
-- Release versioning is synchronized between Gradle version, `app-update.json`, and Git tag.
+- 対応通信は USB-RS485 上の Modbus RTU のみ
+- プロファイルごとに使用する読取 function code は 1 種類
+- 更新配布は public URL 前提で認証を行わない
+- リリース時のバージョンは Gradle / `app-update.json` / Git tag を同期させる

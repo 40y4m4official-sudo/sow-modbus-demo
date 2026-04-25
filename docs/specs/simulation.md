@@ -1,181 +1,197 @@
-# Simulation Specification
+# 値変動シミュレーション仕様
 
-## Scope
+## 対象
 
-Document value simulation behavior and assumptions.
+自動値変動機能の挙動と前提を定義する。
 
-## General Principles
+## 基本方針
 
-- Simulation is optional and controlled from Main screen.
-- Manual input and automatic simulation share the same underlying register repository.
-- Simulation uses floating-point internal state for smoother motion than displayed rounded values.
-- Display rounding happens at UI formatting time, not inside the simulation state itself.
-- Derived relationships should remain physically consistent where possible.
+- シミュレーションは Main 画面から ON/OFF する
+- 手動入力と自動変動は同じ repository に反映される
+- シミュレーション内部では、表示値より細かい浮動小数点状態を保持する
+- 画面表示時にのみ丸める
+- 可能な限り物理関係が崩れないようにする
 
-## Tick Timing
+## tick と時間
 
-- Simulation tick loop interval target:
+- 目標 tick 間隔
   - `1000 ms`
-- Effective integration uses measured elapsed real time between ticks, not a fixed assumed second.
-- Elapsed seconds are clamped to avoid runaway integration after long pauses.
+- 積算値の計算は固定 1 秒ではなく、実際の経過時間を使う
+- 長時間停止後の暴走を防ぐため、経過秒数には上限を設ける
 
-## Reset / Seed Rules
+## 再初期化ルール
 
-Simulation state is reset from current displayed values when:
-- the simulation is started
-- the selected preset/profile changes
-- values are manually edited and applied
-- values are reset
+以下のタイミングで、内部シミュレーション状態を現在表示値から再シードする。
 
-This means:
-- manual input becomes the new internal starting point
-- auto mode continues from the new seeded state
+- シミュレーション開始時
+- 選択プリセット / プロファイル変更時
+- 手動で値を入力して適用した時
+- 値のリセット時
 
-## Voltage Behavior
+つまり:
 
-Target signal types:
-- phase voltages
-- line voltages
+- 手動入力値は新しい内部初期値になる
+- 自動運転は、その時点の値から継続する
 
-Behavior:
-- random walk around initial displayed value
-- allowed range:
-  - initial value �}10%
-- each tick adds a small delta within that range
-- value is clamped to min/max range
+## 電圧
 
-## Current Behavior
+対象信号:
 
-Target signal types:
-- A���d��
-- B���d��
-- C���d��
+- 各相電圧
+- 線間電圧
 
-Behavior uses a shared signed base current for all three phases.
+挙動:
 
-### Shared Base Current
+- 初期表示値を中心に random walk
+- 変動範囲
+  - 初期値の ±10%
+- 毎 tick 少しずつ揺れる
+- 範囲外へは clamp する
 
-State held:
+## 電流
+
+対象信号:
+
+- A相電流
+- B相電流
+- C相電流
+
+### 共通基準値方式
+
+三相で共通の符号付き基準電流を持つ。
+
+内部状態:
+
 - `baseValue`
 - `targetBaseValue`
 - `ticksUntilNextEvent`
 - `transitionTicksRemaining`
-- sign is part of `baseValue`
 
-### Normal Operation
+符号は `baseValue` 自体に含める。
 
-- `baseValue` stays fixed between major events
-- each phase varies independently within:
-  - `baseValue �}5%`
-- this keeps phases close together while still giving small differences
+### 通常時
 
-### Major Events
+- `baseValue` 自体は変えない
+- 各相は毎 tick 以下の範囲で個別に揺れる
+  - `baseValue ±5%`
 
-- major event interval:
-  - random `60..200` ticks
-- when an event starts:
-  - a new signed `targetBaseValue` is chosen
-  - magnitude is based on current baseline scale
-  - sign may occasionally flip by crossing zero
-- transition duration:
-  - random `1..10` ticks
-- during transition:
-  - `baseValue` moves toward `targetBaseValue`
-  - each phase still varies within `baseValue �}5%`
-- after transition completes:
-  - next event interval is generated again from `60..200`
+この方式により:
 
-## Power Factor Behavior
+- 三相の傾向は揃う
+- ただし完全一致にはならない
 
-Target signal type:
-- �͗�
+### 大変動
 
-Behavior:
-- stable at base value most of the time
-- occasional burst drop events
-- next burst interval:
-  - random `15..35` ticks
-- burst duration:
-  - random `3..7` ticks
-- burst value:
-  - base value scaled down to about `45%..85%`
-- clamped to `-0.999..0.999`
+- イベント発生間隔
+  - ランダム `60..200 tick`
+- イベント開始時
+  - 新しい符号付き `targetBaseValue` を決める
+- 遷移時間
+  - ランダム `1..10 tick`
+- 遷移中
+  - `baseValue` を `targetBaseValue` へ寄せる
+  - 同時に各相はその時点の `baseValue ±5%` で揺れる
+- 到達後
+  - 次のイベントまでの tick 数を再生成する
 
-## Derived Power Calculations
+## 力率
 
-The simulation does not directly animate active power. It is derived.
+対象信号:
 
-### Voltage Selection
+- 力率
 
-- If phase voltages exist, use them directly per phase.
-- If only line voltages exist, infer phase-equivalent voltage from:
-  - `average line voltage / sqrt(3)`
+挙動:
 
-### Apparent Power
+- 通常時は基準値付近を維持する
+- たまに burst 的に低下する
+- 次イベントまで
+  - `15..35 tick`
+- burst 継続時間
+  - `3..7 tick`
+- burst 中の値
+  - 基準値の約 `45%..85%`
+- 値は `-0.999..0.999` に clamp する
 
-Per phase:
-- `S_phase = V_phase x |I_phase| / 1000`
+## 電力導出
 
-Total:
+有効電力は直接アニメーションさせず、電圧・電流・力率から導出する。
+
+### 使用電圧
+
+- 相電圧が定義されている場合
+  - 各相電圧をそのまま使う
+- 線間電圧しかない場合
+  - `平均線間電圧 / sqrt(3)` を相電圧相当として使う
+
+### 皮相電力
+
+各相:
+
+- `S_phase = V_phase × |I_phase| / 1000`
+
+合計:
+
 - `S_total = sum(S_phase)`
 
-### Active Power
+### 有効電力
 
-Per phase:
-- `P_phase = S_phase x PF x sign(I_phase)`
+各相:
 
-Total:
+- `P_phase = S_phase × PF × sign(I_phase)`
+
+合計:
+
 - `P_total = sum(P_phase)`
 
-### Reactive Power
+### 無効電力
 
-Per phase magnitude:
-- `Q_phase_mag = S_phase x sqrt(1 - PF^2)`
+各相の大きさ:
 
-Per phase sign:
-- sign follows `P_phase`
+- `Q_phase_mag = S_phase × sqrt(1 - PF^2)`
 
-Total:
+符号:
+
+- `P_phase` の符号に追従
+
+合計:
+
 - `Q_total = sum(Q_phase)`
 
-## Energy Integration
+## 積算値
 
-Energy values are derived from power and elapsed time.
+積算値は電力と経過時間から導出する。
 
-### Active Energy
+### 有効電力量
 
-- `delta_kWh = P_total x elapsedHours`
-- if `P_total >= 0`:
-  - add to forward active energy
-- if `P_total < 0`:
-  - add to reverse active energy
-- total active energy:
-  - if forward/reverse totals exist, total becomes `forward + reverse`
-  - otherwise accumulate absolute active energy
+- `delta_kWh = P_total × elapsedHours`
+- `P_total >= 0`
+  - 正方向有効電力量へ加算
+- `P_total < 0`
+  - 負方向有効電力量へ加算
+- 合計有効電力量が存在する場合
+  - `forward + reverse`
 
-### Reactive Energy
+### 無効電力量
 
-- `delta_kVarh = |Q_total| x elapsedHours`
-- total reactive energy accumulates absolute reactive energy
-- forward/reverse reactive totals are currently held but not independently derived beyond preserving existing values
+- `delta_kVarh = |Q_total| × elapsedHours`
+- 合計無効電力量へ絶対値で加算する
 
-## Display and Raw Conversion
+## 表示値と raw 値
 
-- Simulation produces floating-point display-domain values
-- `MainViewModel` converts display values back to raw register values using the point's data type and gain
-- INT values are rounded before writing raw values back to repository
-- FLOAT values are stored as 32-bit float bits
+- シミュレーション内部では表示値ドメインの浮動小数点を扱う
+- `MainViewModel` が gain と型に応じて raw 値へ戻す
+- `INT` は四捨五入して repository に書く
+- `FLOAT` は 32-bit float bits として保持する
 
-## Expected Result
+## 期待される見え方
 
-The intended visual effect is:
-- voltages drift slowly
-- phases stay reasonably coherent
-- currents show small normal movement plus occasional larger load changes
-- active power changes naturally as a consequence of V, I, and PF
-- energy totals integrate smoothly over time
+- 電圧はゆっくり漂う
+- 三相電流はおおむねまとまりつつ少し差が出る
+- 電流は通常時に細かく揺れ、たまにまとまって大きく変動する
+- 有効電力は `V × I × PF` の結果として自然に変動する
+- 積算値は時間に応じて滑らかに増減する
 
-## Related Code
+## 関連コード
 
 - `app/src/main/java/com/example/meterdemo/meter/simulation/MeterSimulationEngine.kt`
 - `app/src/main/java/com/example/meterdemo/viewmodel/MainViewModel.kt`

@@ -1,63 +1,70 @@
-# USB-RS485 Specification
+# USB-RS485 仕様
 
-## Scope
+## 対象
 
-Document USB serial and RS485 communication behavior.
+USB シリアル接続と RS485 通信処理の仕様を定義する。
 
-## Supported Adapter Assumption
+## 対応アダプタ前提
 
-Primary tested adapter family:
-- FTDI-compatible USB serial adapters
-- example target device:
+主対象:
+
+- FTDI 互換 USB シリアルアダプタ
+- 代表例
   - DSD TECH SH-U11C
 
-The app relies on `usb-serial-for-android` default probing.
+デバイス検出には `usb-serial-for-android` の標準 probing を利用する。
 
-## Discovery Flow
+## 検出フロー
 
-Settings screen provides:
-- generic USB device refresh
-- USB serial device refresh
+Settings 画面では以下を提供する。
 
-Displayed device information includes:
-- device label
-- device path/name
+- 一般 USB デバイス再検出
+- USB serial デバイス再検出
+
+画面へ表示する情報:
+
+- デバイスラベル
+- デバイスパス / 名前
 - VID:PID
-- permission state
+- permission 状態
 
-## Permission Flow
+## permission フロー
 
-- app requests USB permission per selected serial device
-- permission result is reported through `UsbSerialConnectionManager.Listener`
-- permission status is reflected in UI and logs
+- 選択した serial device ごとに USB permission を要求する
+- 結果は `UsbSerialConnectionManager.Listener` 経由で受け取る
+- permission 状態は UI とログへ反映する
 
-## Connection Flow
+## 接続フロー
 
-When user taps `Connect`:
-1. selected profile communication settings are read
-2. app attempts to open the selected serial port
-3. serial parameters are applied:
-   - baud rate from profile
+ユーザーが `Connect` を押した時:
+
+1. 現在プロファイルの通信条件を読む
+2. 対象 serial port を開く
+3. 以下のパラメータを設定する
+   - baud rate
    - 8 data bits
-   - parity from profile
-   - stop bits from profile
-4. DTR and RTS are set true
-5. `SerialInputOutputManager` is started
+   - parity
+   - stop bits
+4. DTR / RTS を true にする
+5. `SerialInputOutputManager` を開始する
 
-Disconnect may happen from:
-- explicit user action
-- reconnect path
-- I/O run error
-- view model clearing
+切断が起こる契機:
 
-## Serial Settings Source
+- ユーザー操作
+- 再接続前処理
+- I/O エラー
+- ViewModel の clear
 
-Current serial settings come from the active meter profile:
+## 通信条件の供給元
+
+現在の通信条件はアクティブなメータープロファイルから読む。
+
 - `baudRate`
 - `parity`
 - `stopBits`
 
-Supported baud rates in editor/UI:
+UI で扱う baud rate:
+
 - `1200`
 - `2400`
 - `4800`
@@ -65,48 +72,54 @@ Supported baud rates in editor/UI:
 - `19200`
 - `115200`
 
-Supported parity values:
+parity:
+
 - None
 - Odd
 - Even
 
-Supported stop bits:
+stop bits:
+
 - 1
 - 2
 
-## Frame Reassembly Rules
+## フレーム再構成
 
-USB reads may arrive fragmented or with noise.
+USB 読取は分割受信やノイズ混入を含みうる。
 
-`UsbRequestFrameAssembler` behavior:
-- accumulates incoming bytes in a buffer
-- scans for first valid 8-byte Modbus RTU request frame
-- validates:
-  - expected slave ID
-  - allowed function code
+`UsbRequestFrameAssembler` の役割:
+
+- 受信バイト列をバッファへ蓄積する
+- 最初に見つかる有効な 8 バイト Modbus RTU 要求を探索する
+- 以下を検証する
+  - slave ID
+  - function code
   - CRC
-  - request parser success
-- emits complete frames
-- drops leading noise when needed
-- preserves likely frame start bytes near buffer tail for future completion
+  - parser 成功
+- 完成フレームを emit する
+- 先頭ノイズを必要に応じて破棄する
+- バッファ末尾の有望な開始バイトは次回のため保持する
 
-Allowed request functions at assembly stage:
+再構成対象 function code:
+
 - `0x03`
 - `0x04`
 
-## Runtime Handling in ViewModel
+## ViewModel での処理順
 
-For each received USB chunk:
-1. raw bytes are logged as `USB / RX`
-2. bytes are appended into frame assembler
-3. dropped noise is logged as informational USB log
-4. each completed frame is passed to `ModbusRtuSlaveEngine`
-5. if response exists, response is written back to USB and logged as `USB / TX`
-6. if request is not handled, an error log entry is created
+受信 chunk ごとの流れ:
 
-## Error Handling
+1. 生バイト列を `USB / RX` としてログ化
+2. frame assembler に追加
+3. 破棄したノイズがあれば USB ログへ記録
+4. 完成フレームを `ModbusRtuSlaveEngine` に渡す
+5. 応答があれば USB へ書き戻し、`USB / TX` としてログ化
+6. 処理不能な要求ならエラーログを残す
 
-Typical error states logged by the app:
+## エラー処理
+
+主なエラー:
+
 - permission denied
 - device not found
 - failed to open USB device
@@ -116,13 +129,13 @@ Typical error states logged by the app:
 - I/O stopped
 - request not handled
 
-## Limitations
+## 制約
 
-- no background Android service for persistent USB communication
-- no multi-device concurrent serial sessions
-- current integration targets read-only Modbus slave behavior
+- 常駐 Android Service でのバックグラウンド通信は未対応
+- 複数デバイス同時セッションは未対応
+- 現状は read-only の Modbus スレーブ動作を前提とする
 
-## Related Code
+## 関連コード
 
 - `app/src/main/java/com/example/meterdemo/usb/*`
 - `app/src/main/java/com/example/meterdemo/viewmodel/MainViewModel.kt`

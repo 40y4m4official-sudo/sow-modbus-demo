@@ -1,109 +1,117 @@
-# Logging Specification
+# ログ仕様
 
-## Scope
+## 対象
 
-Document logging, export, and summary behavior.
+ログ保持、エクスポート、集計画面の仕様を記述する。
 
-## Log Model
+## ログモデル
 
-Each log entry stores:
+各ログエントリは以下を持つ。
+
 - category
 - direction
-- HEX payload when applicable
-- note/message
+- 必要に応じた HEX payload
+- note / message
 - timestamp
 
-## Categories
+## カテゴリ
 
-Current categories:
+現在のカテゴリ:
+
 - `SYSTEM`
 - `MODBUS`
 - `USB`
 
-## Directions
+## 方向
 
-Current directions:
+現在の方向:
+
 - `RX`
 - `TX`
 - `INFO`
 - `ERROR`
 
-## Retention Policy
+## 保持ポリシー
 
-- logs are stored in memory through `CommLogger`
-- max retained entries:
+- ログは `CommLogger` にメモリ保持する
+- 最大保持件数
   - `5000`
-- newest entries are inserted at the front
-- old entries are dropped once capacity is exceeded
+- 新しいログを先頭へ追加する
+- 容量超過時は古いログから破棄する
 
-## Logging Sources
+## 主なログ発生源
 
-Typical sources include:
-- manual Comm Test requests/responses
-- USB RX/TX traffic
-- USB permission/connect/disconnect events
-- dropped USB noise notices
-- simulation start/stop
-- preset changes
-- slave ID updates
-- value apply/reset events
-- app update status messages
+- Comm Test の手動要求 / 応答
+- USB RX / TX 通信
+- USB permission / connect / disconnect イベント
+- `Dropped USB noise` のような再同期通知
+- シミュレーション開始 / 停止
+- プリセット変更
+- slave ID 更新
+- 値の適用 / リセット
+- 更新確認 / ダウンロード状態
 
-## Export Behavior
+## エクスポート仕様
 
-- export target directory:
-  - app external files dir, fallback to app files dir
-  - under `log_exports/`
-- export file name:
+- 保存先
+  - app external files dir を優先し、無ければ app files dir
+  - `log_exports/` 配下
+- ファイル名
   - `meter_demo_logs_yyyyMMdd_HHmmss.txt`
-- file is shared via `FileProvider`
+- 共有方法
+  - `FileProvider` を使って共有シートを開く
 
-### Export Line Format
+### 1行の出力形式
 
-Each exported line contains:
+各行には以下を含む。
+
 - timestamp
 - category
 - direction
-- optional HEX payload
-- optional note
+- 任意の HEX payload
+- 任意の note
 
-Example shape:
+例:
+
 - `[2026-03-27 12:54:02.351] USB / RX / 02 03 90 F9 00 04 B9 0B | USB RX`
 
-## Summary Aggregation
+## 集計仕様
 
-Summary is derived from USB RX logs only.
+集計画面は USB RX ログのみを対象にする。
 
-Aggregation keys:
+集計キー:
+
 - slave ID
 - function code
 - start address
 - quantity
 
-The analyzer:
-- reparses fragmented USB RX byte streams
-- reconstructs valid 8-byte RTU read requests
-- groups by request signature
-- reports count, latest timestamp, and sample HEX
+集計器の挙動:
 
-This summary is intended to answer questions such as:
-- which start addresses SmartLogger is actually reading
-- how often a request pattern occurs
-- whether a suspected address is ever requested
+- 分割された USB RX バイト列を再解析する
+- 有効な 8 バイトの Modbus RTU 読取要求を再構成する
+- 要求シグネチャ単位にグループ化する
+- 件数、最終検出時刻、サンプル HEX を表示する
 
-## Interpretation Rules
+この集計の主な用途:
 
-- raw USB chunks may not match complete RTU frames
-- summary analysis is more reliable than visual inspection of high-rate raw logs
-- `Dropped USB noise` entries indicate bytes discarded during frame resynchronization
+- SmartLogger が実際にどの開始アドレスを読んでいるか把握する
+- 特定の要求パターンの頻度を確認する
+- 期待アドレスが本当に読まれているかを確認する
 
-## Current Limitations
+## 解釈ルール
 
-- logs are not persisted across app restarts unless manually exported
-- filters are basic and primarily screen-level
-- summary currently focuses on 8-byte read requests
+- 生の USB chunk はそのまま RTU 完全フレームとは限らない
+- 高頻度ログでは目視より集計結果の方が信頼できる
+- `Dropped USB noise` はフレーム再同期時に捨てられた先頭バイトを示す
 
-## Related Code
+## 現在の制約
+
+- ログは手動エクスポートしない限りアプリ再起動後に残らない
+- フィルタ機能は画面単位の簡易なものに留まる
+- 集計は現在 8 バイトの読取要求を中心に扱う
+
+## 関連コード
 
 - `app/src/main/java/com/example/meterdemo/logging/*`
 - `app/src/main/java/com/example/meterdemo/ui/LogsScreen.kt`

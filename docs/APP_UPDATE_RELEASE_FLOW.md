@@ -1,41 +1,43 @@
-# APK Update Release Flow
+# APK 更新リリース手順
 
-This app uses a public JSON file plus public GitHub Release assets for free APK updates.
+このアプリは、公開 JSON と公開 GitHub Release asset を使って、無料で APK 更新を配布する。
 
-## Public JSON
+## 公開 JSON
 
-The app reads update metadata from:
+更新メタデータは次の URL から取得する。
 
 `https://raw.githubusercontent.com/40y4m4official-sudo/sow-modbus-demo/main/app-update.json`
 
-Expected format:
+想定フォーマット:
 
 ```json
 {
-  "versionCode": 3,
-  "versionName": "1.2.0",
-  "apkUrl": "https://github.com/40y4m4official-sudo/sow-modbus-demo/releases/download/v1.2.0/SOW-Modbus-Demo-v1.2.0-Release.apk"
+  "versionCode": 8,
+  "versionName": "0.1.0",
+  "apkUrl": "https://github.com/40y4m4official-sudo/sow-modbus-demo/releases/download/v0.1.0/SOW-Modbus-Demo-v0.1.0-Release.apk"
 }
 ```
 
 ## Release asset
 
-Upload the signed APK to a public GitHub Release.
+署名済み release APK を public GitHub Release にアップロードする。
 
-Recommended asset name:
+推奨 asset 名:
 
 `SOW-Modbus-Demo-v<versionName>-Release.apk`
 
-## Update process
+## 更新手順
 
-1. Build a signed release APK.
-2. Create a public GitHub Release and upload the APK asset.
-3. Update `app-update.json` in the main branch with the new `versionCode`, `versionName`, and `apkUrl`.
-4. Commit and push `app-update.json`.
+1. 署名付き release APK をビルドする
+2. public GitHub Release を作成し、APK asset をアップロードする
+3. `main` ブランチ上の `app-update.json` を更新する
+   - `versionCode`
+   - `versionName`
+   - `apkUrl`
+4. `app-update.json` をコミットして push する
 
-## Notes
+## 注意事項
 
-- The repository must stay public for this direct update flow.
-- The APK asset URL must be reachable without authentication.
-- `versionCode` must increase for the app to detect an update.
-
+- この直接更新フローを使うため、リポジトリは public のまま維持する
+- APK asset の URL は認証なしで取得できる必要がある
+- アプリが更新を検知するため、`versionCode` は必ず増加させる

@@ -1,10 +1,10 @@
-# UI Specification
+# UI 仕様
 
-## Scope
+## 対象
 
-Document the screen structure, major flows, and current UI rules.
+画面構成、主要フロー、現在の UI ルールを定義する。
 
-## Screen List
+## 画面一覧
 
 - Main
 - Settings
@@ -13,160 +13,180 @@ Document the screen structure, major flows, and current UI rules.
 - Logs
 - Log Summary
 
-## Main Screen
+## Main 画面
 
-### Main Modes
+### 表示モード
 
-Supported display modes:
+対応モード:
+
 - Card View
 - List View
 
 #### Card View
 
-- one selected signal at a time
-- previous/next controls
-- large value panel
-- manual value input for selected point
-- auto simulation start/stop controls
+- 一度に 1 項目を表示
+- 前後移動ボタンを持つ
+- 大きい値パネルを表示
+- 選択中項目の手動入力ができる
+- 自動シミュレーション開始 / 停止ができる
 
 #### List View
 
-- table-like layout
-- columns:
+- 表形式で複数項目を同時表示する
+- 列構成
   - `Addr`
   - `Item`
   - `Value`
-- header row is fixed
-- body scrolls independently
-- tapping a row changes selected point for manual operations below
+- ヘッダー行は固定
+- 本体行のみ独立スクロール
+- 行タップで下部操作対象の項目を切り替える
 
-### Main Header
+### ヘッダー
 
-- profile name shown in available width
-- settings action uses a fixed-size gear icon
-- title/header actions are intended to remain visually stable even for long profile names
+- 現在のプロファイル名を利用可能幅に応じて表示する
+- Settings 遷移は固定サイズの歯車アイコン
+- プロファイル名が長くても、アクション領域が崩れないことを優先する
 
-### Value Panel
+### 値パネル
 
-- when auto simulation is running, panel color changes to indicate auto mode
-- color choice is intentionally subdued rather than bright or purple-biased
+- 自動シミュレーション実行中は色を変えて状態を分かりやすくする
+- 色は強すぎず、紫系に寄りすぎない落ち着いた色を使う
 
-## Settings Screen
+## Settings 画面
 
-### Header Actions
+### ヘッダーアクション
 
-Contains:
-- language icon button in the header
-- tap opens a dropdown menu of supported app languages
-- dropdown shows language names only
-- dropdown labels are fixed as `English`, `・ｽ・ｽ・ｽ{・ｽ・ｽ`, and future `・ｽ・ｽ・ｽ・ｽ`
-- back action uses the shared fixed-size icon button
+以下を含む。
 
-### Language Switching
+- 言語切替アイコン
+- 戻るアイコン
 
-Current supported app languages:
+言語アイコン押下時の挙動:
+
+- 対応言語のプルダウンを開く
+- プルダウンには言語名だけを表示する
+- 表記は UI 言語に関係なく固定
+  - `English`
+  - `日本語`
+  - 将来追加時は `中文`
+
+### 言語切替
+
+現時点の対応言語:
+
 - English
 - Japanese
 
-Behavior:
-- selection is persisted locally
-- stored language is applied again on next startup
-- switching language updates resource-based UI strings
-- language names shown in the dropdown do not change with the active locale
+挙動:
 
-### Sections Order
+- 選択言語はローカル保存する
+- 次回起動時も保存済み言語を再適用する
+- resource 化された UI 文言は切替後の言語へ追従する
+- プルダウン中の言語名は現在言語に応じて翻訳しない
 
-Current order:
+### セクション順
+
+現在の表示順:
+
 1. Meter Preset
 2. USB-RS485
 3. Logs
 4. Comm Test
 5. App Update
 
-### Meter Preset Section
+### Meter Preset セクション
 
-Contains:
-- preset selector
-- user-added preset indicator (`added` tag)
+含むもの:
+
+- プリセット選択
+- ユーザー追加メーターの `added` 表示
 - `Edit Meter`
-- slave address input and apply button
-- main view mode toggle button
+- slave address 入力と適用ボタン
+- Main 表示モード切替
 
-### USB-RS485 Section
+### USB-RS485 セクション
 
-Contains:
-- detected USB device counts
-- current profile serial settings
-- connection status
-- refresh button
-- per-device permission/connect/disconnect actions
-- connection status label follows the selected UI language
+含むもの:
 
-### Logs Section
+- 検出した USB デバイス数
+- 現在プロファイルの通信条件
+- 接続状態
+- 再検出ボタン
+- 各デバイスの permission / connect / disconnect 操作
 
-Contains:
-- log count
-- open logs action
+接続状態表示:
 
-### Comm Test Section
+- 現在の UI 言語で表示する
 
-Contains:
-- current selected point display
-- quick read test button
-- custom HEX request input
-- custom request send button
+### Logs セクション
 
-### App Update Section
+含むもの:
 
-Located at the bottom of settings screen.
+- ログ件数
+- Logs 画面への遷移
 
-Contains:
-- current app version (`X.Y.Z` only)
-- update status message
-- latest version if known
-- download progress if active
-- single action button for check/download flow
+### Comm Test セクション
 
-## Shared Header Rules
+含むもの:
 
-- back action uses a fixed-size arrow icon, not text
-- edit/delete/settings/language utility actions prefer fixed-size icons for layout stability
-- screen headers are kept outside the scrolling content region where appropriate
+- 現在選択項目表示
+- 03H 読取試験ボタン
+- カスタム HEX 入力
+- カスタム送信ボタン
 
-## Edit Meter Screen
+### App Update セクション
 
-- shows user-added meters only by default
-- can reveal built-in preset list through `Show Presets`
-- built-in presets are view-only
-- user-added meters are editable
-- delete mode allows multi-select deletion
-- all visible labels, hints, actions, and delete confirmation text follow the selected UI language via string resources
+Settings 画面の最下部に配置する。
 
-## Add Meter / Register Settings Screen
+含むもの:
 
-- standard 22 template signal names are locked and not freely editable
-- unused template entries are skipped by leaving address blank
-- `Add Register` allows custom non-template registers
-- validation errors appear before overwrite confirmation
-- standard fields include communication settings and register definitions
+- 現在アプリバージョン
+  - `X.Y.Z` 形式のみ
+- 更新状態メッセージ
+- 最新版情報
+- ダウンロード進捗
+- チェック / ダウンロードを兼ねる単一ボタン
 
-## Logs Screen
+## 共通ヘッダールール
 
-- supports icon-based export and clear actions
-- shows categorized logs
-- can share exported log file via Android share sheet
+- 戻る操作は固定サイズの矢印アイコンを使う
+- edit / delete / settings / language などの補助アクションも固定サイズアイコンを優先する
+- 画面ヘッダーは、必要に応じてスクロール領域の外側に固定する
 
-## Log Summary Screen
+## Edit Meter 画面
 
-- separate view from raw logs
-- groups USB RX requests by:
+- 初期表示ではユーザー追加メーターのみ表示する
+- `Show Presets` により built-in preset を表示できる
+- built-in preset は閲覧専用
+- ユーザー追加メーターは編集可能
+- delete mode では複数選択削除できる
+- 表示ラベル、説明文、アクション、削除確認ダイアログは現在の UI 言語に従う
+
+## Add Meter / Register Settings 画面
+
+- 標準 22 項目テンプレートの名前は固定で編集不可
+- 未使用項目はアドレス空欄でスキップする
+- テンプレート外レジスタは `Add Register` で追加する
+- 入力エラーは上書き確認ダイアログより前に表示する
+- 通信設定とレジスタ定義を同一画面で編集する
+
+## Logs 画面
+
+- エクスポートと削除はアイコンボタン
+- カテゴリ付きログ一覧を表示する
+- エクスポート時は Android 共有シートを使う
+
+## Log Summary 画面
+
+- 生ログとは別画面
+- USB RX を以下で集計する
   - slave ID
   - function code
   - start address
   - quantity
-- useful for understanding what external masters actually read
+- 外部マスターが実際に何を読んでいるか把握する用途を持つ
 
-## Related Code
+## 関連コード
 
 - `app/src/main/java/com/example/meterdemo/ui/*`
 - `app/src/main/java/com/example/meterdemo/viewmodel/MainViewModel.kt`

@@ -70,3 +70,12 @@ When preparing a new release:
 - When creating or editing files, preserve or rewrite them as `UTF-8 without BOM`.
 - Do not save source, resource, markdown, Gradle, JSON, XML, or config files in Shift_JIS, UTF-8 with BOM, UTF-16, or ANSI code pages.
 - If mojibake or encoding ambiguity appears, fix the affected file and keep the repaired file in `UTF-8 without BOM`.
+
+## Documentation Language Rule
+
+- Files under `docs/` must be written in Japanese by default.
+- English may be used only where it is more natural or required, such as:
+  - identifiers
+  - class / file / API names
+  - protocol terms and external product names
+- When adding or updating documentation, keep the surrounding document language consistent and preserve Japanese as the primary narrative language.

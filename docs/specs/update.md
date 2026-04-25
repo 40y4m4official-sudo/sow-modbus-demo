@@ -1,115 +1,126 @@
-# Update Specification
+# 更新機能仕様
 
-## Scope
+## 対象
 
-Document the APK self-update flow implemented without Google Play in-app update APIs.
+Google Play In-App Update API を使わない APK 直接更新フローを定義する。
 
-## Update Source Model
+## 更新元モデル
 
-The app uses public HTTP resources:
-- update metadata JSON
-- public GitHub Release APK asset
+アプリは public な HTTP リソースを利用する。
 
-No Play Store in-app update API is used.
+- 更新メタデータ JSON
+- public GitHub Release の APK asset
 
-## Metadata URL
+Play Store の in-app update API は使わない。
 
-Build-time constant:
+## メタデータ URL
+
+ビルド時定数:
+
 - `BuildConfig.APP_UPDATE_JSON_URL`
 
-Current intended public URL:
+現在の想定 URL:
+
 - `https://raw.githubusercontent.com/40y4m4official-sudo/sow-modbus-demo/main/app-update.json`
 
-## Remote JSON Schema
+## JSON スキーマ
 
-Expected fields:
+期待するフィールド:
 
 ```json
 {
-  "versionCode": 7,
-  "versionName": "0.0.7",
-  "apkUrl": "https://github.com/40y4m4official-sudo/sow-modbus-demo/releases/download/v0.0.7/SOW-Modbus-Demo-v0.0.7-Release.apk"
+  "versionCode": 8,
+  "versionName": "0.1.0",
+  "apkUrl": "https://github.com/40y4m4official-sudo/sow-modbus-demo/releases/download/v0.1.0/SOW-Modbus-Demo-v0.1.0-Release.apk"
 }
 ```
 
-Rules:
-- `versionCode` must be an integer
-- `versionName` should match the release tag name without the leading `v`
-- `apkUrl` must be the direct asset URL, not the GitHub release page URL
+ルール:
 
-## Version Comparison Rules
+- `versionCode` は整数
+- `versionName` は Git tag の `v` を外した値と一致させる
+- `apkUrl` は Release ページではなく asset 直リンクを使う
 
-Installed version source:
-- Android package manager
+## バージョン比較
 
-Comparison rule:
-- if remote `versionCode` is greater than installed `versionCode`, update is available
-- otherwise app reports that the current version is already latest
+インストール済みバージョンの取得元:
 
-## UI Behavior
+- Android PackageManager
 
-Settings screen shows:
-- current version
-- status message
-- latest version if known
-- download progress if applicable
-- one action button that changes role:
+判定:
+
+- remote `versionCode` が現在より大きければ更新あり
+- それ以外は最新版とみなす
+
+## UI 挙動
+
+Settings 画面の更新セクションには以下を表示する。
+
+- 現在バージョン
+- 状態メッセージ
+- 既知なら最新バージョン
+- 必要ならダウンロード進捗
+- 状態に応じて役割が変わる単一ボタン
   - `Check for Update`
   - `Download and Install Update`
   - `Checking...`
   - `Downloading...`
 
-## Download Behavior
+## ダウンロード仕様
 
-- Uses `HttpURLConnection`
-- HTTP GET for both JSON and APK
-- APK target path:
-  - app-private files directory under `files/updates/meterdemo-update.apk`
-- Download progress uses `contentLength` when available
-- Progress percent is stored in UI state when calculable
+- `HttpURLConnection` を使う
+- JSON も APK も HTTP GET
+- APK 保存先
+  - app-private files dir の `files/updates/meterdemo-update.apk`
+- `contentLength` が取得できれば進捗率を計算する
+- 計算可能なときのみ進捗 percent を UI 状態へ持つ
 
-## Installer Launch Flow
+## インストール起動フロー
 
-After a successful download:
-1. app checks `PackageManager.canRequestPackageInstalls()`
-2. if install permission is missing:
-   - launch `Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES`
-   - show guidance message to retry after enabling
-3. if permission is available:
-   - create content URI via `FileProvider`
-   - launch installer with MIME type `application/vnd.android.package-archive`
+ダウンロード成功後:
 
-## Android Requirements
+1. `PackageManager.canRequestPackageInstalls()` を確認する
+2. 権限が無ければ
+   - `Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES` を開く
+   - 許可後に再試行するよう案内する
+3. 権限があれば
+   - `FileProvider` で content URI を作る
+   - MIME type `application/vnd.android.package-archive` でインストーラを起動する
 
-Manifest requirements:
+## Android 要件
+
+Manifest 上必要なもの:
+
 - `android.permission.INTERNET`
 - `android.permission.REQUEST_INSTALL_PACKAGES`
-- configured `FileProvider`
+- `FileProvider` 設定
 
-## Operational Assumptions
+## 運用前提
 
-- update hosting is public
-- APK is signed with the same signing key lineage required for successful update install
-- repository versioning is kept aligned with:
+- 更新配布は public URL で行う
+- APK は同一署名系統で署名されている必要がある
+- 次のバージョン情報は常に揃える
   - `app/build.gradle.kts`
   - `app-update.json`
-  - git tag
-  - release APK filename
+  - Git tag
+  - release APK ファイル名
 
-## Failure States
+## 失敗状態
 
-Handled user-visible failures include:
-- failed metadata retrieval
-- failed APK download
-- missing unknown-sources permission
+ユーザーに見える主な失敗:
 
-The update flow does not currently include:
-- delta updates
-- signature verification beyond normal Android package install checks
-- background download service
-- resumable downloads
+- 更新メタデータ取得失敗
+- APK ダウンロード失敗
+- 未知のアプリ権限不足
 
-## Related Code
+現時点で未対応:
+
+- 差分更新
+- Android 標準署名確認以上の追加署名検証
+- バックグラウンドサービスによる継続ダウンロード
+- 再開可能ダウンロード
+
+## 関連コード
 
 - `app/src/main/java/com/example/meterdemo/viewmodel/MainViewModel.kt`
 - `app/src/main/java/com/example/meterdemo/ui/SettingsScreen.kt`

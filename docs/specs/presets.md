@@ -1,12 +1,13 @@
-# Meter Preset Specification
+# メータープリセット仕様
 
-## Scope
+## 対象
 
-Document built-in meter presets and how they are maintained.
+組み込みプリセットと、その保守ルールを定義する。
 
-## Built-in Presets
+## 組み込みプリセット一覧
 
-Current built-in profiles:
+現在の built-in profiles:
+
 - `BackUp-CT`
 - `Mitsubishi-ME110SSR-MB`
 - `DTSU666-HW`
@@ -14,12 +15,14 @@ Current built-in profiles:
 - `Wave Energy-PWM-72`
 - `DRPR-72/DVRR-72`
 
-Default preset:
+デフォルトプリセット:
+
 - `BackUp-CT`
 
-## Common Preset Structure
+## 共通構造
 
-Each `MeterProfile` contains:
+各 `MeterProfile` は以下を持つ。
+
 - `modelId`
 - `displayName`
 - `slaveId`
@@ -30,115 +33,120 @@ Each `MeterProfile` contains:
 - `functionCode`
 - `points`
 
-Each `MeterPoint` contains:
-- fixed signal meaning via `SignalType`
-- display name
-- start address
-- register count
+各 `MeterPoint` は以下を持つ。
+
+- `SignalType` による固定信号種別
+- 表示名
+- 開始アドレス
+- レジスタ数
 - gain
 - data type
 - word/byte order
-- initial raw value
+- 初期 raw 値
 
-## Communication Settings
+## 通信設定
 
 ### BackUp-CT
 
-- Function code:
+- Function code
   - `0x03`
-- Serial:
+- Serial
   - `9600 / 8N1`
 
 ### Mitsubishi-ME110SSR-MB
 
-- Function code:
+- Function code
   - `0x03`
-- Serial:
+- Serial
   - `19200 / 8E1`
 
 ### DTSU666-HW
 
-- Function code:
+- Function code
   - `0x03`
-- Serial:
+- Serial
   - `9600 / 8N1`
 
 ### YADA-YDS60-80
 
-- Function code:
+- Function code
   - `0x03`
-- Serial:
+- Serial
   - `9600 / 8N1`
 
 ### Wave Energy-PWM-72
 
-- Function code:
+- Function code
   - `0x03`
-- Serial:
+- Serial
   - `9600 / 8N1`
 
 ### DRPR-72/DVRR-72
 
-- Function code:
+- Function code
   - `0x03`
-- Serial:
+- Serial
   - `9600 / 8N1`
 
-## Preset Editing Policy
+## 編集ポリシー
 
-- Built-in presets are read-only in the app
-- User-added meters are editable in `Edit Meter`
-- Standard 22 signal templates use fixed names and fixed `SignalType`
-- Unused standard registers are represented by leaving the address blank
-- Custom non-template registers can still be added with `Add Register`
+- 組み込みプリセットはアプリ内で read-only
+- ユーザー追加メーターは `Edit Meter` から編集可能
+- 標準 22 項目テンプレートは固定名・固定 `SignalType` を持つ
+- 未使用の標準項目はアドレス空欄で無効化する
+- テンプレート外レジスタは `Add Register` で追加できる
 
-## Standard 22 Signal Types
+## 標準 22 信号
 
-The standard template covers these fixed signal meanings:
-- A���d��
-- B���d��
-- C���d��
-- A-B���d��
-- B-C���d��
-- C-A���d��
-- A���d��
-- B���d��
-- C���d��
-- �L���d��
-- A���L���d��
-- B���L���d��
-- C���L���d��
-- �����d��
-- �͗�
-- �瑊�d��
-- ���v�L���d�͗�
-- ���v�����d�͗�
-- ���������v�L���d�͗�
-- ���������v�����d�͗�
-- ���������v�L���d�͗�
-- ���������v�����d�͗�
+標準テンプレートでは以下の固定信号種別を扱う。
 
-## Maintenance Rules
+- A相電圧
+- B相電圧
+- C相電圧
+- A-B線電圧
+- B-C線電圧
+- C-A線電圧
+- A相電流
+- B相電流
+- C相電流
+- 有効電力
+- A相有効電力
+- B相有効電力
+- C相有効電力
+- 無効電力
+- 力率
+- 皮相電力
+- 合計有効電力量
+- 合計無効電力量
+- 正方向合計有効電力量
+- 正方向合計無効電力量
+- 負方向合計有効電力量
+- 負方向合計無効電力量
 
-When changing a preset:
-- preserve tested communication settings unless intentionally revalidated
-- update initial values carefully when SmartLogger compatibility depends on them
-- prefer zero-fill active-range behavior over hard-coded dummy points when gaps only exist to satisfy block reads
-- keep `SignalType` aligned with intended simulation/derived behavior
+## 保守ルール
 
-## Verification Notes
+プリセット変更時は以下を守る。
 
-Known validation tools:
+- 検証済みの通信設定は、意図的に再検証する場合を除き維持する
+- SmartLogger 互換性に関わる初期値は慎重に変更する
+- ブロック読取互換のための欠番埋めは、可能ならダミーポイント追加ではなく「有効範囲内 `0x0000` 埋め」仕様で吸収する
+- シミュレーションに関わるため、`SignalType` は意図した信号種別と一致させる
+
+## 検証観点
+
+主な検証ツール:
+
 - SmartLogger
 - QModMaster
 
-Typical verification points:
-- communication settings
-- block-read compatibility
-- displayed value agreement with master tool
-- handling of gaps inside active address range
+主な確認項目:
 
-## Related Code
+- 通信条件が一致するか
+- ブロック読取で `NA` や例外が出ないか
+- マスター側表示値とアプリ側表示値が一致するか
+- 有効範囲内ギャップが `0x0000` で埋まるか
+
+## 関連コード
 
 - `app/src/main/java/com/example/meterdemo/meter/profile/*`
 - `app/src/main/java/com/example/meterdemo/meter/model/SignalType.kt`

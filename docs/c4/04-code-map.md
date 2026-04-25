@@ -1,25 +1,110 @@
-# Code Map
+# コードマップ
 
-## Purpose
+## 目的
 
-Map conceptual components to concrete code locations.
+概念上のコンポーネントと、実際のファイル配置を対応付けます。
 
-## Mapping
+## 実装言語ごとの役割
 
-### Entry Point
+### Kotlin
+
+主な担当:
+
+- アプリ本体ロジック
+- Modbus RTU スレーブ応答
+- USB-RS485 通信
+- 状態管理
+- シミュレーション
+- 更新機能
+- ログ機能
+- 多言語切替制御
+
+主な配置:
+
+- `app/src/main/java/**/*`
+
+### Jetpack Compose（Kotlin）
+
+主な担当:
+
+- 各画面 UI
+- 画面ヘッダー
+- アイコン付き操作
+- ダイアログ
+- 一覧 / カード表示
+
+主な配置:
+
+- `app/src/main/java/com/example/meterdemo/ui/*`
+
+### XML
+
+主な担当:
+
+- Android Manifest
+- 文字列リソース
+- アイコン / FileProvider / drawable 定義
+
+主な配置:
+
+- `app/src/main/AndroidManifest.xml`
+- `app/src/main/res/**/*.xml`
+
+### Gradle Kotlin DSL
+
+主な担当:
+
+- ビルド設定
+- release 設定
+- 署名設定
+- バージョン情報
+- APK 出力名
+- BuildConfig 定数
+
+主な配置:
+
+- `app/build.gradle.kts`
+- `settings.gradle.kts`
+
+### JSON
+
+主な担当:
+
+- 更新配布用メタデータ
+
+主な配置:
+
+- `app-update.json`
+
+### Markdown
+
+主な担当:
+
+- C4 資料
+- 機能仕様
+- リリース / 運用ドキュメント
+
+主な配置:
+
+- `docs/**/*.md`
+- `AGENTS.md`
+
+## 対応表
+
+### エントリーポイント
 
 - `app/src/main/java/com/example/meterdemo/MainActivity.kt`
 
-### App Composition / Navigation
+### アプリ構成 / 画面遷移
 
 - `app/src/main/java/com/example/meterdemo/ui/MeterDemoApp.kt`
 
-### Main State / Orchestration
+### メイン状態 / オーケストレーション
 
 - `app/src/main/java/com/example/meterdemo/viewmodel/MainViewModel.kt`
 - `app/src/main/java/com/example/meterdemo/viewmodel/MainViewMode.kt`
 
-### UI Screens
+### UI 画面
 
 - `app/src/main/java/com/example/meterdemo/ui/MeterValuesScreen.kt`
 - `app/src/main/java/com/example/meterdemo/ui/SettingsScreen.kt`
@@ -29,14 +114,14 @@ Map conceptual components to concrete code locations.
 - `app/src/main/java/com/example/meterdemo/ui/AddMeterScreen.kt`
 - `app/src/main/java/com/example/meterdemo/ui/ScreenHeader.kt`
 
-### Localization
+### 多言語対応
 
 - `app/src/main/java/com/example/meterdemo/localization/AppLanguage.kt`
 - `app/src/main/java/com/example/meterdemo/localization/AppLanguageManager.kt`
 - `app/src/main/res/values/strings.xml`
 - `app/src/main/res/values-ja/strings.xml`
 
-### Meter Domain Model
+### メータードメインモデル
 
 - `app/src/main/java/com/example/meterdemo/meter/model/SignalType.kt`
 - `app/src/main/java/com/example/meterdemo/meter/model/MeterPoint.kt`
@@ -46,7 +131,7 @@ Map conceptual components to concrete code locations.
 - `app/src/main/java/com/example/meterdemo/meter/model/SerialParity.kt`
 - `app/src/main/java/com/example/meterdemo/meter/model/DataType.kt`
 
-### Built-in Presets
+### 組み込みプリセット
 
 - `app/src/main/java/com/example/meterdemo/meter/profile/BackUpCtProfile.kt`
 - `app/src/main/java/com/example/meterdemo/meter/profile/MitsubishiMe110SsrMbProfile.kt`
@@ -56,11 +141,11 @@ Map conceptual components to concrete code locations.
 - `app/src/main/java/com/example/meterdemo/meter/profile/Drpr72Dvrr72Profile.kt`
 - `app/src/main/java/com/example/meterdemo/meter/profile/MeterProfiles.kt`
 
-### Repository / Value Handling
+### Repository / 値処理
 
 - `app/src/main/java/com/example/meterdemo/meter/repository/MeterRepository.kt`
 
-### Simulation
+### シミュレーション
 
 - `app/src/main/java/com/example/meterdemo/meter/simulation/MeterSimulationEngine.kt`
 
@@ -70,25 +155,25 @@ Map conceptual components to concrete code locations.
 - `app/src/main/java/com/example/meterdemo/modbus/ModbusFrameParser.kt`
 - `app/src/main/java/com/example/meterdemo/modbus/ModbusCrc.kt`
 
-### USB / Serial
+### USB / シリアル
 
 - `app/src/main/java/com/example/meterdemo/usb/UsbDeviceScanner.kt`
 - `app/src/main/java/com/example/meterdemo/usb/UsbSerialScanner.kt`
 - `app/src/main/java/com/example/meterdemo/usb/UsbSerialConnectionManager.kt`
 - `app/src/main/java/com/example/meterdemo/usb/UsbRequestFrameAssembler.kt`
 
-### Logging
+### ログ
 
 - `app/src/main/java/com/example/meterdemo/logging/CommLog.kt`
 - `app/src/main/java/com/example/meterdemo/logging/CommLogger.kt`
 - `app/src/main/java/com/example/meterdemo/logging/LogExporter.kt`
 - `app/src/main/java/com/example/meterdemo/logging/LogAddressSummaryAnalyzer.kt`
 
-### Persistence
+### 永続化
 
 - `app/src/main/java/com/example/meterdemo/persistence/MeterPersistence.kt`
 
-### Build / Release / Update
+### ビルド / リリース / 更新
 
 - `app/build.gradle.kts`
 - `app/src/main/AndroidManifest.xml`
@@ -96,16 +181,17 @@ Map conceptual components to concrete code locations.
 - `docs/APP_UPDATE_RELEASE_FLOW.md`
 - `AGENTS.md`
 
-### Tests
+### テスト
 
 - `app/src/test/java/com/example/meterdemo/modbus/*`
 - `app/src/test/java/com/example/meterdemo/meter/repository/*`
 - `app/src/test/java/com/example/meterdemo/usb/*`
 - `app/src/test/java/com/example/meterdemo/logging/*`
 
-## Traceability Rule
+## トレーサビリティルール
 
-When a feature changes:
-- update its implementation files
-- update the matching `docs/specs/*.md`
-- update the affected `docs/c4/*.md` section if structure or responsibilities changed
+機能変更時は以下をセットで更新します。
+
+- 実装ファイル
+- 対応する `docs/specs/*.md`
+- 構造や責務が変わる場合は `docs/c4/*.md`

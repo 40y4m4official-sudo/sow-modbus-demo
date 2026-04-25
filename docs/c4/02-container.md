@@ -1,93 +1,95 @@
-# Container View
+# コンテナ図
 
-## Purpose
+## 目的
 
-Describe the high-level runtime containers involved in the system.
+システムを構成する実行単位 / 配布単位を高レベルで整理する。
 
-## Containers
+## コンテナ
 
-### 1. Android Application
+### 1. Android アプリ
 
-- Technology:
+- 技術要素
   - Kotlin
   - Jetpack Compose
-  - Android USB host APIs
+  - Android USB Host API
   - `usb-serial-for-android`
-- Responsibilities:
-  - render UI
-  - manage presets and user meters
-  - hold current raw values
-  - act as a Modbus RTU slave
-  - handle USB serial connection lifecycle
-  - simulate values
-  - persist state locally
-  - export logs
-  - check/download/install app updates
+- 責務
+  - UI 表示
+  - プリセット / ユーザーメーター管理
+  - 現在 raw 値保持
+  - Modbus RTU スレーブ応答
+  - USB シリアル接続管理
+  - 値変動シミュレーション
+  - ローカル保存
+  - ログエクスポート
+  - 更新確認 / ダウンロード / インストール起動
 
-### 2. Local App Storage
+### 2. ローカルアプリストレージ
 
-- Technology:
+- 技術要素
   - app-private files
-  - persisted preferences/state storage
-- Responsibilities:
-  - persist user profiles
-  - persist selected profile and raw values
-  - store downloaded update APK before install
-  - store exported log files
+  - SharedPreferences / ローカル保存領域
+- 責務
+  - ユーザープロファイル保存
+  - 選択中プロファイル / slave ID / raw 値 / 表示モード保存
+  - ダウンロード済み APK の一時保存
+  - ログエクスポートファイル保存
 
-### 3. Public Update Metadata
+### 3. 公開更新メタデータ
 
-- Technology:
-  - static JSON file served from GitHub raw content
-- Responsibilities:
-  - expose latest `versionCode`
-  - expose latest `versionName`
-  - expose direct APK asset URL
+- 技術要素
+  - GitHub raw 上の静的 JSON
+- 責務
+  - 最新 `versionCode` 公開
+  - 最新 `versionName` 公開
+  - APK 直リンク公開
 
-### 4. Public APK Asset Hosting
+### 4. 公開 APK asset 配布
 
-- Technology:
+- 技術要素
   - GitHub Releases
-- Responsibilities:
-  - host signed APK assets for direct download
+- 責務
+  - 署名済み APK を直接ダウンロード可能な形で配布する
 
-### 5. External Master Systems
+### 5. 外部マスターシステム
 
-- Examples:
+- 代表例
   - SmartLogger
   - QModMaster
-- Responsibilities:
-  - issue Modbus RTU read requests
-  - interpret returned register values
-  - validate compatibility of presets and value behavior
+- 責務
+  - Modbus RTU 読取要求を送る
+  - 返却値を解釈する
+  - プリセット互換性を検証する
 
-### 6. USB-RS485 Hardware Path
+### 6. USB-RS485 ハードウェア経路
 
-- Technology:
-  - Android USB host + FTDI-compatible adapter + RS485 wiring
-- Responsibilities:
-  - carry serial bytes between Android app and external master device
+- 技術要素
+  - Android USB Host
+  - FTDI 対応アダプタ
+  - RS485 配線
+- 責務
+  - Android アプリと外部マスター間でシリアルデータを伝送する
 
-## Data Flow Summary
+## データフロー概要
 
-1. Operator launches and configures the app.
-2. External master sends Modbus RTU read requests over RS485.
-3. USB serial layer receives bytes and reassembles complete frames.
-4. Modbus engine validates request and builds a response from repository data.
-5. Response is sent back over USB serial.
-6. Logs are stored, summarized, and optionally exported.
-7. For updates, the app fetches remote JSON, compares version, downloads a signed APK, and invokes installer flow.
+1. オペレーターがアプリを起動し、設定を行う
+2. 外部マスターが RS485 経由で Modbus RTU 読取要求を送る
+3. USB シリアル層がバイト列を受信し、完全なフレームへ再構成する
+4. Modbus エンジンが要求を検証し、リポジトリ内の値からレスポンスを生成する
+5. レスポンスを USB シリアルへ返送する
+6. ログは保存・集計され、必要に応じてエクスポートされる
+7. 更新時は公開 JSON を取得し、バージョン比較後に APK をダウンロードし、インストーラを起動する
 
-## Container Boundaries
+## コンテナ境界
 
-- The Android app is the only runtime container under direct code control.
-- GitHub raw JSON and GitHub Releases are passive distribution containers.
-- External master tools and USB hardware are integration dependencies, not owned containers.
+- 直接コード管理している実行コンテナは Android アプリのみ
+- GitHub raw JSON と GitHub Releases は受動的な配布コンテナ
+- 外部マスター機器と USB ハードウェアは統合先であり、本プロジェクト所有のコンテナではない
 
-## Operational Notes
+## 運用メモ
 
-- Release APKs are generated with a fixed naming rule:
+- release APK の命名規則
   - `SOW-Modbus-Demo-vX.Y.Z-Release.apk`
-- Update metadata is expected at:
+- 更新 JSON の想定 URL
   - `https://raw.githubusercontent.com/40y4m4official-sudo/sow-modbus-demo/main/app-update.json`
-- Release assets are expected in public GitHub Releases under the same repository.
+- Release asset は同じ public リポジトリの GitHub Releases に配置する
