@@ -79,3 +79,8 @@ When preparing a new release:
   - class / file / API names
   - protocol terms and external product names
 - When adding or updating documentation, keep the surrounding document language consistent and preserve Japanese as the primary narrative language.
+
+## Commit Message Rule
+
+- Git commit messages in this repository must always be written in Japanese.
+- Keep commit messages concise and specific to the change being committed.
