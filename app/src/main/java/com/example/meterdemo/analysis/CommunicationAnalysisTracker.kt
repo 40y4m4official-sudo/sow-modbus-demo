@@ -84,7 +84,7 @@ class CommunicationAnalysisTracker(
 
         val summaries = slaveStats.values
             .map { it.toSnapshot() }
-            .sortedWith(compareBy<SlaveCommunicationSummary> { if (it.slaveId == 0) 1 else 0 }.thenBy { it.slaveId })
+            .sortedWith(compareBy<SlaveCommunicationSummary> { if (it.slaveId == 0) 0 else 1 }.thenBy { it.slaveId })
 
         val averageResponseTime = if (responseTimeSamples > 0) {
             responseTimeTotalMs.toDouble() / responseTimeSamples.toDouble()

@@ -6,12 +6,13 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -55,6 +56,9 @@ fun SettingsScreen(
     onOpenEditMeter: () -> Unit,
     onSlaveIdChange: (String) -> Unit,
     onApplySlaveId: () -> Unit,
+    onCycleAnalysisBaudRate: () -> Unit,
+    onCycleAnalysisParity: () -> Unit,
+    onCycleAnalysisStopBits: () -> Unit,
     onSelectAppMode: (AppMode) -> Unit,
     onToggleMainViewMode: () -> Unit,
     onLanguageSelected: (AppLanguage) -> Unit,
@@ -104,9 +108,7 @@ fun SettingsScreen(
                     ) {
                         AppLanguage.entries.forEach { language ->
                             DropdownMenuItem(
-                                text = {
-                                    Text(text = language.fixedLabel)
-                                },
+                                text = { Text(text = language.fixedLabel) },
                                 onClick = {
                                     languageExpanded = false
                                     onLanguageSelected(language)
@@ -143,32 +145,20 @@ fun SettingsScreen(
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         if (uiState.appMode == AppMode.METER_DEMO) {
-                            Button(
-                                onClick = { onSelectAppMode(AppMode.METER_DEMO) },
-                                modifier = Modifier.weight(1f)
-                            ) {
+                            Button(onClick = { onSelectAppMode(AppMode.METER_DEMO) }, modifier = Modifier.weight(1f)) {
                                 Text(stringResource(R.string.settings_mode_meter_demo))
                             }
                         } else {
-                            OutlinedButton(
-                                onClick = { onSelectAppMode(AppMode.METER_DEMO) },
-                                modifier = Modifier.weight(1f)
-                            ) {
+                            OutlinedButton(onClick = { onSelectAppMode(AppMode.METER_DEMO) }, modifier = Modifier.weight(1f)) {
                                 Text(stringResource(R.string.settings_mode_meter_demo))
                             }
                         }
                         if (uiState.appMode == AppMode.COMM_ANALYSIS) {
-                            Button(
-                                onClick = { onSelectAppMode(AppMode.COMM_ANALYSIS) },
-                                modifier = Modifier.weight(1f)
-                            ) {
+                            Button(onClick = { onSelectAppMode(AppMode.COMM_ANALYSIS) }, modifier = Modifier.weight(1f)) {
                                 Text(stringResource(R.string.settings_mode_comm_analysis))
                             }
                         } else {
-                            OutlinedButton(
-                                onClick = { onSelectAppMode(AppMode.COMM_ANALYSIS) },
-                                modifier = Modifier.weight(1f)
-                            ) {
+                            OutlinedButton(onClick = { onSelectAppMode(AppMode.COMM_ANALYSIS) }, modifier = Modifier.weight(1f)) {
                                 Text(stringResource(R.string.settings_mode_comm_analysis))
                             }
                         }
@@ -186,115 +176,24 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        text = stringResource(R.string.settings_meter_preset),
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    OutlinedButton(
-                        onClick = { presetExpanded = !presetExpanded },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(uiState.profileName)
-                    }
-                    if (presetExpanded) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 6.dp)
-                                .background(
-                                    color = MaterialTheme.colorScheme.surfaceContainerHighest,
-                                    shape = RoundedCornerShape(18.dp)
-                                )
-                                .border(
-                                    width = 1.dp,
-                                    color = MaterialTheme.colorScheme.outlineVariant,
-                                    shape = RoundedCornerShape(18.dp)
-                                )
-                                .padding(8.dp)
-                        ) {
-                            uiState.allProfiles.forEach { profile ->
-                                val isSelected = profile.modelId == uiState.profileModelId
-                                val isAdded = uiState.userProfiles.any { it.modelId == profile.modelId }
-
-                                Button(
-                                    onClick = {
-                                        presetExpanded = false
-                                        onProfileSelected(profile.modelId)
-                                    },
-                                    modifier = Modifier.fillMaxWidth(),
-                                    enabled = !isSelected
-                                ) {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Text(
-                                            text = profile.displayName,
-                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-                                        )
-                                        if (isAdded) {
-                                            Box(
-                                                modifier = Modifier
-                                                    .background(
-                                                        color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.18f),
-                                                        shape = RoundedCornerShape(999.dp)
-                                                    )
-                                                    .padding(horizontal = 8.dp, vertical = 2.dp)
-                                            ) {
-                                                Text(
-                                                    text = stringResource(R.string.settings_added_tag),
-                                                    style = MaterialTheme.typography.labelSmall
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
-                                Spacer(modifier = Modifier.height(8.dp))
-                            }
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Button(
-                        onClick = onOpenEditMeter,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(stringResource(R.string.settings_edit_meter))
-                    }
-                    Spacer(modifier = Modifier.height(12.dp))
-                    OutlinedTextField(
-                        value = uiState.slaveIdInput,
-                        onValueChange = onSlaveIdChange,
-                        label = { Text(stringResource(R.string.settings_slave_address)) },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Button(
-                        onClick = onApplySlaveId,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(stringResource(R.string.settings_apply_slave_address))
-                    }
-                    Spacer(modifier = Modifier.height(12.dp))
-                    OutlinedButton(
-                        onClick = onToggleMainViewMode,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(
-                            stringResource(
-                                R.string.settings_main_view,
-                                when (uiState.mainViewMode) {
-                                    MainViewMode.CARD -> stringResource(R.string.main_view_card)
-                                    MainViewMode.LIST -> stringResource(R.string.main_view_list)
-                                }
-                            )
-                        )
-                    }
-                }
+            if (uiState.appMode == AppMode.METER_DEMO) {
+                MeterPresetCard(
+                    uiState = uiState,
+                    presetExpanded = presetExpanded,
+                    onPresetExpandedChange = { presetExpanded = it },
+                    onProfileSelected = onProfileSelected,
+                    onOpenEditMeter = onOpenEditMeter,
+                    onSlaveIdChange = onSlaveIdChange,
+                    onApplySlaveId = onApplySlaveId,
+                    onToggleMainViewMode = onToggleMainViewMode
+                )
+            } else {
+                AnalysisSerialSettingsCard(
+                    uiState = uiState,
+                    onCycleAnalysisBaudRate = onCycleAnalysisBaudRate,
+                    onCycleAnalysisParity = onCycleAnalysisParity,
+                    onCycleAnalysisStopBits = onCycleAnalysisStopBits
+                )
             }
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -316,12 +215,21 @@ fun SettingsScreen(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = stringResource(
-                            R.string.settings_profile_serial,
-                            uiState.profileBaudRate,
-                            uiState.profileParity.label.first().toString(),
-                            uiState.profileStopBits
-                        ),
+                        text = if (uiState.appMode == AppMode.COMM_ANALYSIS) {
+                            stringResource(
+                                R.string.settings_analysis_serial,
+                                uiState.analysisBaudRate,
+                                uiState.analysisParity.label,
+                                uiState.analysisStopBits
+                            )
+                        } else {
+                            stringResource(
+                                R.string.settings_profile_serial,
+                                uiState.profileBaudRate,
+                                uiState.profileParity.label.first().toString(),
+                                uiState.profileStopBits
+                            )
+                        },
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -340,10 +248,7 @@ fun SettingsScreen(
                         )
                     }
                     Spacer(modifier = Modifier.height(12.dp))
-                    OutlinedButton(
-                        onClick = onRefreshUsbDevices,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
+                    OutlinedButton(onClick = onRefreshUsbDevices, modifier = Modifier.fillMaxWidth()) {
                         Text(stringResource(R.string.settings_refresh_usb_devices))
                     }
                     Spacer(modifier = Modifier.height(12.dp))
@@ -384,21 +289,12 @@ fun SettingsScreen(
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                     Spacer(modifier = Modifier.height(12.dp))
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                                    ) {
-                                        OutlinedButton(
-                                            onClick = { onRequestUsbPermission(device.deviceName) },
-                                            modifier = Modifier.weight(1f)
-                                        ) {
+                                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                        OutlinedButton(onClick = { onRequestUsbPermission(device.deviceName) }, modifier = Modifier.weight(1f)) {
                                             Text(stringResource(R.string.settings_permission))
                                         }
                                         if (isConnected) {
-                                            Button(
-                                                onClick = onDisconnectUsbDevice,
-                                                modifier = Modifier.weight(1f)
-                                            ) {
+                                            Button(onClick = onDisconnectUsbDevice, modifier = Modifier.weight(1f)) {
                                                 Text(stringResource(R.string.settings_disconnect))
                                             }
                                         } else {
@@ -454,16 +350,8 @@ fun SettingsScreen(
                         style = MaterialTheme.typography.bodyMedium
                     )
                     Spacer(modifier = Modifier.height(12.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Button(
-                            onClick = onOpenLogs,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text(stringResource(R.string.settings_open_logs))
-                        }
+                    Button(onClick = onOpenLogs, modifier = Modifier.fillMaxWidth()) {
+                        Text(stringResource(R.string.settings_open_logs))
                     }
                 }
             }
@@ -479,17 +367,11 @@ fun SettingsScreen(
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = stringResource(
-                                R.string.settings_current_item,
-                                uiState.selectedPoint?.name ?: "-"
-                            ),
+                            text = stringResource(R.string.settings_current_item, uiState.selectedPoint?.name ?: "-"),
                             style = MaterialTheme.typography.bodyMedium
                         )
                         Spacer(modifier = Modifier.height(12.dp))
-                        Button(
-                            onClick = onSimulateRead,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
+                        Button(onClick = onSimulateRead, modifier = Modifier.fillMaxWidth()) {
                             Text(stringResource(R.string.settings_run_read))
                         }
                         Spacer(modifier = Modifier.height(12.dp))
@@ -501,10 +383,7 @@ fun SettingsScreen(
                             modifier = Modifier.fillMaxWidth()
                         )
                         Spacer(modifier = Modifier.height(12.dp))
-                        OutlinedButton(
-                            onClick = { onSimulateCustomRequest(customHex) },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
+                        OutlinedButton(onClick = { onSimulateCustomRequest(customHex) }, modifier = Modifier.fillMaxWidth()) {
                             Text(stringResource(R.string.settings_send_custom_request))
                         }
                     }
@@ -564,6 +443,150 @@ fun SettingsScreen(
                         )
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MeterPresetCard(
+    uiState: MainUiState,
+    presetExpanded: Boolean,
+    onPresetExpandedChange: (Boolean) -> Unit,
+    onProfileSelected: (String) -> Unit,
+    onOpenEditMeter: () -> Unit,
+    onSlaveIdChange: (String) -> Unit,
+    onApplySlaveId: () -> Unit,
+    onToggleMainViewMode: () -> Unit
+) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(text = stringResource(R.string.settings_meter_preset), style = MaterialTheme.typography.titleMedium)
+            Spacer(modifier = Modifier.height(12.dp))
+            OutlinedButton(onClick = { onPresetExpandedChange(!presetExpanded) }, modifier = Modifier.fillMaxWidth()) {
+                Text(uiState.profileName)
+            }
+            if (presetExpanded) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 6.dp)
+                        .background(
+                            color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                            shape = RoundedCornerShape(18.dp)
+                        )
+                        .border(
+                            width = 1.dp,
+                            color = MaterialTheme.colorScheme.outlineVariant,
+                            shape = RoundedCornerShape(18.dp)
+                        )
+                        .padding(8.dp)
+                ) {
+                    uiState.allProfiles.forEach { profile ->
+                        val isSelected = profile.modelId == uiState.profileModelId
+                        val isAdded = uiState.userProfiles.any { it.modelId == profile.modelId }
+                        Button(
+                            onClick = {
+                                onPresetExpandedChange(false)
+                                onProfileSelected(profile.modelId)
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            enabled = !isSelected
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = profile.displayName,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                )
+                                if (isAdded) {
+                                    Box(
+                                        modifier = Modifier
+                                            .background(
+                                                color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.18f),
+                                                shape = RoundedCornerShape(999.dp)
+                                            )
+                                            .padding(horizontal = 8.dp, vertical = 2.dp)
+                                    ) {
+                                        Text(
+                                            text = stringResource(R.string.settings_added_tag),
+                                            style = MaterialTheme.typography.labelSmall
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+            Button(onClick = onOpenEditMeter, modifier = Modifier.fillMaxWidth()) {
+                Text(stringResource(R.string.settings_edit_meter))
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+            OutlinedTextField(
+                value = uiState.slaveIdInput,
+                onValueChange = onSlaveIdChange,
+                label = { Text(stringResource(R.string.settings_slave_address)) },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            Button(onClick = onApplySlaveId, modifier = Modifier.fillMaxWidth()) {
+                Text(stringResource(R.string.settings_apply_slave_address))
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+            OutlinedButton(onClick = onToggleMainViewMode, modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    stringResource(
+                        R.string.settings_main_view,
+                        when (uiState.mainViewMode) {
+                            MainViewMode.CARD -> stringResource(R.string.main_view_card)
+                            MainViewMode.LIST -> stringResource(R.string.main_view_list)
+                        }
+                    )
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun AnalysisSerialSettingsCard(
+    uiState: MainUiState,
+    onCycleAnalysisBaudRate: () -> Unit,
+    onCycleAnalysisParity: () -> Unit,
+    onCycleAnalysisStopBits: () -> Unit
+) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = stringResource(R.string.settings_analysis_serial_title),
+                style = MaterialTheme.typography.titleMedium
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = stringResource(R.string.settings_analysis_serial_description),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            Row(modifier = Modifier.fillMaxWidth()) {
+                OutlinedButton(onClick = onCycleAnalysisBaudRate, modifier = Modifier.weight(1f)) {
+                    Text(stringResource(R.string.settings_analysis_baud, uiState.analysisBaudRate))
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                OutlinedButton(onClick = onCycleAnalysisParity, modifier = Modifier.weight(1f)) {
+                    Text(stringResource(R.string.settings_analysis_parity, uiState.analysisParity.label))
+                }
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+            OutlinedButton(onClick = onCycleAnalysisStopBits, modifier = Modifier.fillMaxWidth()) {
+                Text(stringResource(R.string.settings_analysis_stop_bits, uiState.analysisStopBits))
             }
         }
     }

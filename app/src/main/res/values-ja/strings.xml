@@ -14,6 +14,12 @@
     <string name="settings_mode_meter_demo">&#x30E1;&#x30FC;&#x30BF;&#x30FC;&#x30C7;&#x30E2;</string>
     <string name="settings_mode_comm_analysis">&#x901A;&#x4FE1;&#x89E3;&#x6790;</string>
     <string name="settings_analysis_warning">&#x901A;&#x4FE1;&#x89E3;&#x6790;&#x30E2;&#x30FC;&#x30C9;&#x4E2D;&#x306F;&#x73FE;&#x5834;&#x30E9;&#x30A4;&#x30F3;&#x3078;&#x5FDC;&#x7B54;&#x3092;&#x4E00;&#x5207;&#x8FD4;&#x3057;&#x307E;&#x305B;&#x3093;&#x3002;</string>
+    <string name="settings_analysis_serial_title">&#x901A;&#x4FE1;&#x8A2D;&#x5B9A;</string>
+    <string name="settings_analysis_serial_description">&#x53D7;&#x52D5;&#x76E3;&#x8996;&#x306E;&#x305F;&#x3081;&#x3001;&#x30E9;&#x30A4;&#x30F3;&#x6761;&#x4EF6;&#x3092;&#x624B;&#x52D5;&#x3067;&#x8A2D;&#x5B9A;&#x3057;&#x307E;&#x3059;&#x3002;</string>
+    <string name="settings_analysis_serial">&#x76E3;&#x8996;&#x901A;&#x4FE1;&#x8A2D;&#x5B9A;: %1$d 8%2$s%3$d</string>
+    <string name="settings_analysis_baud">Baud: %1$d</string>
+    <string name="settings_analysis_parity">Parity: %1$s</string>
+    <string name="settings_analysis_stop_bits">Stop Bit: %1$d</string>
     <string name="settings_meter_preset">&#x30E1;&#x30FC;&#x30BF;&#x30FC;&#x30D7;&#x30EA;&#x30BB;&#x30C3;&#x30C8;</string>
     <string name="settings_added_tag">added</string>
     <string name="settings_edit_meter">Edit Meter</string>
@@ -115,6 +121,10 @@
     <string name="analysis_connection_line">&#x63A5;&#x7D9A;: %1$s / &#x30C7;&#x30D0;&#x30A4;&#x30B9;: %2$s</string>
     <string name="analysis_tab_dashboard">&#x4E00;&#x89A7;</string>
     <string name="analysis_tab_address">&#x30A2;&#x30C9;&#x30EC;&#x30B9;&#x5225;</string>
+    <string name="analysis_tab_address_detail">&#x958B;&#x59CB;&#x30A2;&#x30C9;&#x30EC;&#x30B9;&#x96C6;&#x8A08;</string>
+    <string name="analysis_tab_address_detail_selected">Addr %1$s &#x96C6;&#x8A08;</string>
+    <string name="analysis_back_to_address">&#x30A2;&#x30C9;&#x30EC;&#x30B9;&#x4E00;&#x89A7;&#x3078;&#x623B;&#x308B;</string>
+    <string name="analysis_detail_empty">&#x3053;&#x306E;&#x30A2;&#x30C9;&#x30EC;&#x30B9;&#x306E;&#x6709;&#x52B9;&#x8981;&#x6C42;&#x96C6;&#x8A08;&#x306F;&#x307E;&#x3060;&#x3042;&#x308A;&#x307E;&#x305B;&#x3093;&#x3002;</string>
     <string name="analysis_tab_abnormal">&#x7570;&#x5E38;</string>
     <string name="analysis_tab_quality">&#x54C1;&#x8CEA;</string>
     <string name="analysis_tab_log">&#x5168;&#x30ED;&#x30B0;</string>

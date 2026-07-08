@@ -4,6 +4,7 @@ import android.content.Context
 import com.example.meterdemo.meter.model.DataType
 import com.example.meterdemo.meter.model.MeterPoint
 import com.example.meterdemo.meter.model.MeterProfile
+import com.example.meterdemo.meter.model.SerialParity
 import com.example.meterdemo.meter.model.SignalType
 import com.example.meterdemo.meter.model.WordByteOrder
 import com.example.meterdemo.viewmodel.AppMode
@@ -33,6 +34,9 @@ class MeterPersistence(context: Context) {
             .put("currentSlaveId", state.currentSlaveId)
             .put("mainViewMode", state.mainViewMode.name)
             .put("appMode", state.appMode.name)
+            .put("analysisBaudRate", state.analysisBaudRate)
+            .put("analysisParity", state.analysisParity.name)
+            .put("analysisStopBits", state.analysisStopBits)
             .put("currentRawValues", JSONObject().apply {
                 state.currentRawValues.forEach { (address, value) ->
                     put(address.toString(), value)
@@ -66,7 +70,10 @@ class MeterPersistence(context: Context) {
             currentSlaveId = json.optInt("currentSlaveId").takeIf { it in 1..247 },
             currentRawValues = rawValues,
             mainViewMode = MainViewMode.fromStoredName(json.optString("mainViewMode", MainViewMode.CARD.name)),
-            appMode = AppMode.fromStoredName(json.optString("appMode", AppMode.METER_DEMO.name))
+            appMode = AppMode.fromStoredName(json.optString("appMode", AppMode.METER_DEMO.name)),
+            analysisBaudRate = json.optInt("analysisBaudRate", 19200),
+            analysisParity = SerialParity.entries.firstOrNull { it.name == json.optString("analysisParity", SerialParity.EVEN.name) } ?: SerialParity.EVEN,
+            analysisStopBits = json.optInt("analysisStopBits", 1).takeIf { it in setOf(1, 2) } ?: 1
         )
     }
 
@@ -151,5 +158,8 @@ data class PersistedMeterState(
     val currentSlaveId: Int?,
     val currentRawValues: Map<Int, Int>,
     val mainViewMode: MainViewMode = MainViewMode.CARD,
-    val appMode: AppMode = AppMode.METER_DEMO
+    val appMode: AppMode = AppMode.METER_DEMO,
+    val analysisBaudRate: Int = 19200,
+    val analysisParity: SerialParity = SerialParity.EVEN,
+    val analysisStopBits: Int = 1
 )

@@ -43,7 +43,8 @@ fun MeterDemoApp(viewModel: MainViewModel) {
             CommunicationAnalysisScreen(
                 uiState = uiState,
                 logs = logs,
-                onOpenSettings = { currentScreen = Screen.Settings }
+                onOpenSettings = { currentScreen = Screen.Settings },
+                onClearLogs = viewModel::clearLogs
             )
         }
 
@@ -55,6 +56,9 @@ fun MeterDemoApp(viewModel: MainViewModel) {
             onOpenEditMeter = { currentScreen = Screen.EditMeter },
             onSlaveIdChange = viewModel::updateSlaveIdInput,
             onApplySlaveId = viewModel::applySlaveId,
+            onCycleAnalysisBaudRate = viewModel::cycleAnalysisBaudRate,
+            onCycleAnalysisParity = viewModel::cycleAnalysisParity,
+            onCycleAnalysisStopBits = viewModel::cycleAnalysisStopBits,
             onSelectAppMode = viewModel::selectAppMode,
             onToggleMainViewMode = viewModel::toggleMainViewMode,
             onLanguageSelected = viewModel::selectAppLanguage,

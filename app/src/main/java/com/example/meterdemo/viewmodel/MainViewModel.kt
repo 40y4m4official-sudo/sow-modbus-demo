@@ -74,6 +74,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private var lastSimulationTickElapsedRealtime: Long? = null
     private var mainViewMode: MainViewMode = MainViewMode.CARD
     private var appMode: AppMode = AppMode.METER_DEMO
+    private var analysisBaudRate: Int = 19200
+    private var analysisParity: SerialParity = SerialParity.EVEN
+    private var analysisStopBits: Int = 1
     private var appLanguage: AppLanguage = appLanguageManager.getCurrentLanguage()
     private val usbSerialConnectionManager = UsbSerialConnectionManager(
         context = application,
@@ -88,9 +91,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
 
             override fun onConnected(deviceName: String) {
-                val profile = repository.getProfile()
+                val (baudRate, parity, stopBits) = currentSerialSettings()
                 logger.info(
-                    "USB serial connected: $deviceName (${profile.baudRate} 8${parityLabel(profile.parity).first()}${profile.stopBits})",
+                    "USB serial connected: $deviceName ($baudRate 8${parity.label.first()}$stopBits)",
                     CommCategory.USB
                 )
                 refreshUiState(
@@ -221,6 +224,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun selectAppMode(mode: AppMode) {
         if (appMode == mode) return
+
+        val wasConnected = _uiState.value.connectedUsbDeviceName != null
+        if (wasConnected) {
+            usbSerialConnectionManager.disconnect()
+        }
+
         appMode = mode
         communicationAnalysisTracker.reset()
         if (mode == AppMode.COMM_ANALYSIS) {
@@ -231,6 +240,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         } else {
             logger.info("Switched to meter demo mode", CommCategory.SYSTEM)
         }
+        if (wasConnected) {
+            logger.info("Disconnected USB serial because app mode changed", CommCategory.USB)
+        }
         persistState()
         refreshUiState(selectedPointIndex = _uiState.value.selectedPointIndex)
     }
@@ -239,6 +251,25 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         if (language == appLanguage) return
         appLanguage = language
         appLanguageManager.setLanguage(language)
+        refreshUiState(selectedPointIndex = _uiState.value.selectedPointIndex)
+    }
+
+    fun cycleAnalysisBaudRate() {
+        val currentIndex = SUPPORTED_BAUD_RATES.indexOf(analysisBaudRate).takeIf { it >= 0 } ?: 0
+        analysisBaudRate = SUPPORTED_BAUD_RATES[(currentIndex + 1) % SUPPORTED_BAUD_RATES.size]
+        persistState()
+        refreshUiState(selectedPointIndex = _uiState.value.selectedPointIndex)
+    }
+
+    fun cycleAnalysisParity() {
+        analysisParity = analysisParity.next()
+        persistState()
+        refreshUiState(selectedPointIndex = _uiState.value.selectedPointIndex)
+    }
+
+    fun cycleAnalysisStopBits() {
+        analysisStopBits = if (analysisStopBits == 1) 2 else 1
+        persistState()
         refreshUiState(selectedPointIndex = _uiState.value.selectedPointIndex)
     }
 
@@ -306,7 +337,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun connectUsbSerial(deviceName: String) {
-        val profile = repository.getProfile()
+        val (baudRate, parity, stopBits) = currentSerialSettings()
         refreshUiState(
             selectedPointIndex = _uiState.value.selectedPointIndex,
             usbConnectionStatus = UsbConnectionStatus.CONNECTING,
@@ -314,9 +345,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         )
         if (!usbSerialConnectionManager.connect(
                 deviceName = deviceName,
-                baudRate = profile.baudRate,
-                parity = profile.parity,
-                stopBits = if (profile.stopBits == 2) 2 else 1
+                baudRate = baudRate,
+                parity = parity.profileValue,
+                stopBits = stopBits
             )
         ) {
             refreshUiState(
@@ -723,6 +754,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         usbConnectionStatus: UsbConnectionStatus = _uiState.value.usbConnectionStatus,
         connectedUsbDeviceName: String? = _uiState.value.connectedUsbDeviceName,
         appMode: AppMode = this.appMode,
+        analysisBaudRate: Int = this.analysisBaudRate,
+        analysisParity: SerialParity = this.analysisParity,
+        analysisStopBits: Int = this.analysisStopBits,
         appLanguage: AppLanguage = this.appLanguage,
         editingExistingUserMeter: Boolean = _uiState.value.editingExistingUserMeter,
         draftReadOnly: Boolean = _uiState.value.draftReadOnly,
@@ -757,6 +791,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             usbConnectionStatus = usbConnectionStatus,
             connectedUsbDeviceName = connectedUsbDeviceName,
             appMode = appMode,
+            analysisBaudRate = analysisBaudRate,
+            analysisParity = analysisParity,
+            analysisStopBits = analysisStopBits,
             appLanguage = appLanguage,
             points = snapshots,
             selectedPointIndex = safeIndex,
@@ -792,6 +829,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             usbConnectionStatus = UsbConnectionStatus.DISCONNECTED,
             connectedUsbDeviceName = null,
             appMode = appMode,
+            analysisBaudRate = analysisBaudRate,
+            analysisParity = analysisParity,
+            analysisStopBits = analysisStopBits,
             appLanguage = appLanguage,
             points = snapshots,
             selectedPointIndex = 0,
@@ -1145,7 +1185,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 currentSlaveId = repository.getSlaveId(),
                 currentRawValues = repository.snapshot().associate { it.address to it.rawValue },
                 mainViewMode = mainViewMode,
-                appMode = appMode
+                appMode = appMode,
+                analysisBaudRate = analysisBaudRate,
+                analysisParity = analysisParity,
+                analysisStopBits = analysisStopBits
             )
         )
     }
@@ -1165,6 +1208,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         persisted.currentSlaveId?.let(repository::setSlaveId)
         mainViewMode = persisted.mainViewMode
         appMode = persisted.appMode
+        analysisBaudRate = persisted.analysisBaudRate.takeIf { it in SUPPORTED_BAUD_RATES } ?: 19200
+        analysisParity = persisted.analysisParity
+        analysisStopBits = persisted.analysisStopBits
         persisted.currentRawValues.forEach { (address, value) ->
             repository.setRawValue(address, value)
         }
@@ -1283,6 +1329,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    private fun currentSerialSettings(): Triple<Int, SerialParity, Int> {
+        return if (appMode == AppMode.COMM_ANALYSIS) {
+            Triple(analysisBaudRate, analysisParity, analysisStopBits)
+        } else {
+            Triple(
+                repository.getProfile().baudRate,
+                SerialParity.fromProfileValue(repository.getProfile().parity),
+                if (repository.getProfile().stopBits == 2) 2 else 1
+            )
+        }
+    }
+
     private fun appString(resId: Int, vararg args: Any): String {
         return getApplication<Application>().getString(resId, *args)
     }
@@ -1314,6 +1372,9 @@ data class MainUiState(
     val usbConnectionStatus: UsbConnectionStatus,
     val connectedUsbDeviceName: String?,
     val appMode: AppMode,
+    val analysisBaudRate: Int,
+    val analysisParity: SerialParity,
+    val analysisStopBits: Int,
     val appLanguage: AppLanguage,
     val points: List<MeterValueSnapshot>,
     val selectedPointIndex: Int,

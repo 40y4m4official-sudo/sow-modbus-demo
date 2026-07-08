@@ -14,6 +14,12 @@
     <string name="settings_mode_meter_demo">Meter Demo</string>
     <string name="settings_mode_comm_analysis">Comm Analysis</string>
     <string name="settings_analysis_warning">In communication analysis mode, the app never returns a response to the line.</string>
+    <string name="settings_analysis_serial_title">Serial Settings</string>
+    <string name="settings_analysis_serial_description">Set the line conditions manually for passive monitoring.</string>
+    <string name="settings_analysis_serial">Monitor serial: %1$d 8%2$s%3$d</string>
+    <string name="settings_analysis_baud">Baud: %1$d</string>
+    <string name="settings_analysis_parity">Parity: %1$s</string>
+    <string name="settings_analysis_stop_bits">Stop Bit: %1$d</string>
     <string name="settings_meter_preset">Meter Preset</string>
     <string name="settings_added_tag">added</string>
     <string name="settings_edit_meter">Edit Meter</string>
@@ -115,6 +121,10 @@
     <string name="analysis_connection_line">Connection: %1$s / Device: %2$s</string>
     <string name="analysis_tab_dashboard">Dashboard</string>
     <string name="analysis_tab_address">By Addr</string>
+    <string name="analysis_tab_address_detail">Addr Detail</string>
+    <string name="analysis_tab_address_detail_selected">Addr %1$s Detail</string>
+    <string name="analysis_back_to_address">Back to Addr List</string>
+    <string name="analysis_detail_empty">No valid request summary for this address yet.</string>
     <string name="analysis_tab_abnormal">Abnormal</string>
     <string name="analysis_tab_quality">Quality</string>
     <string name="analysis_tab_log">Full Log</string>

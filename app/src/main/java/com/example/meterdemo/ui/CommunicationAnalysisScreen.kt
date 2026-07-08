@@ -1,6 +1,7 @@
 package com.example.meterdemo.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,9 +16,12 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.DeleteSweep
 import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material3.Button
+import androidx.compose.material.icons.outlined.UnfoldMore
 import androidx.compose.material3.Card
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -43,15 +47,18 @@ import com.example.meterdemo.analysis.CommunicationAnalysisSnapshot
 import com.example.meterdemo.analysis.IntervalJitter
 import com.example.meterdemo.analysis.SlaveCommunicationSummary
 import com.example.meterdemo.analysis.SlaveStatus
+import com.example.meterdemo.logging.AddressSummary
 import com.example.meterdemo.logging.CommLog
+import com.example.meterdemo.logging.LogAddressSummaryAnalyzer
 import com.example.meterdemo.viewmodel.MainUiState
+import com.example.meterdemo.viewmodel.UsbConnectionStatus
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-private enum class AnalysisTab {
-    DASHBOARD,
+private enum class AnalysisViewMode {
     ADDRESS,
+    ADDRESS_DETAIL,
     ABNORMAL,
     QUALITY,
     LOG
@@ -61,11 +68,24 @@ private enum class AnalysisTab {
 fun CommunicationAnalysisScreen(
     uiState: MainUiState,
     logs: List<CommLog>,
-    onOpenSettings: () -> Unit
+    onOpenSettings: () -> Unit,
+    onClearLogs: () -> Unit
 ) {
-    var currentTab by rememberSaveable { mutableStateOf(AnalysisTab.DASHBOARD) }
+    var currentMode by rememberSaveable { mutableStateOf(AnalysisViewMode.ADDRESS) }
+    var selectedSlaveId by rememberSaveable { mutableStateOf<Int?>(null) }
+    var menuExpanded by remember { mutableStateOf(false) }
     val formatter = remember { SimpleDateFormat("HH:mm:ss.SSS", Locale.US) }
     val analysis = uiState.communicationAnalysis
+    val selectedSummary = analysis.slaveSummaries.firstOrNull { it.slaveId == selectedSlaveId }
+    val addressDetails = remember(logs, selectedSlaveId) {
+        selectedSlaveId?.let { slaveId ->
+            LogAddressSummaryAnalyzer.summarize(logs).filter { it.slaveId == slaveId }
+        }.orEmpty()
+    }
+
+    if (currentMode == AnalysisViewMode.ADDRESS_DETAIL && selectedSummary == null) {
+        currentMode = AnalysisViewMode.ADDRESS
+    }
 
     Column(
         modifier = Modifier
@@ -82,150 +102,142 @@ fun CommunicationAnalysisScreen(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = stringResource(R.string.analysis_title),
-                    style = MaterialTheme.typography.headlineMedium
+                    style = MaterialTheme.typography.headlineSmall
                 )
                 Text(
                     text = stringResource(R.string.analysis_passive_mode_note),
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+            }
+            HeaderIconButton(
+                onClick = onClearLogs,
+                contentDescription = stringResource(R.string.logs_clear_description)
+            ) {
+                Icon(imageVector = Icons.Outlined.DeleteSweep, contentDescription = null)
             }
             HeaderIconButton(
                 onClick = onOpenSettings,
                 contentDescription = stringResource(R.string.settings_title)
             ) {
-                Icon(
-                    imageVector = Icons.Outlined.Settings,
-                    contentDescription = null
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Card(modifier = Modifier.fillMaxWidth()) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    AnalysisMetric(
-                        modifier = Modifier.weight(1f),
-                        label = stringResource(R.string.analysis_metric_frames),
-                        value = analysis.totalFrames.toString()
-                    )
-                    AnalysisMetric(
-                        modifier = Modifier.weight(1f),
-                        label = stringResource(R.string.analysis_metric_crc),
-                        value = analysis.crcErrorCount.toString()
-                    )
-                    AnalysisMetric(
-                        modifier = Modifier.weight(1f),
-                        label = stringResource(R.string.analysis_metric_timeout),
-                        value = analysis.timeoutCount.toString()
-                    )
-                }
-                Spacer(modifier = Modifier.height(12.dp))
-                Text(
-                    text = stringResource(
-                        R.string.analysis_connection_line,
-                        connectionStatusLabel(uiState),
-                        uiState.connectedUsbDeviceName ?: "-"
-                    ),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Icon(imageVector = Icons.Outlined.Settings, contentDescription = null)
             }
         }
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            AnalysisTabButton(
-                modifier = Modifier.weight(1f),
-                selected = currentTab == AnalysisTab.DASHBOARD,
-                label = stringResource(R.string.analysis_tab_dashboard)
-            ) { currentTab = AnalysisTab.DASHBOARD }
-            AnalysisTabButton(
-                modifier = Modifier.weight(1f),
-                selected = currentTab == AnalysisTab.ADDRESS,
-                label = stringResource(R.string.analysis_tab_address)
-            ) { currentTab = AnalysisTab.ADDRESS }
-            AnalysisTabButton(
-                modifier = Modifier.weight(1f),
-                selected = currentTab == AnalysisTab.ABNORMAL,
-                label = stringResource(R.string.analysis_tab_abnormal)
-            ) { currentTab = AnalysisTab.ABNORMAL }
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            AnalysisTabButton(
-                modifier = Modifier.weight(1f),
-                selected = currentTab == AnalysisTab.QUALITY,
-                label = stringResource(R.string.analysis_tab_quality)
-            ) { currentTab = AnalysisTab.QUALITY }
-            AnalysisTabButton(
-                modifier = Modifier.weight(1f),
-                selected = currentTab == AnalysisTab.LOG,
-                label = stringResource(R.string.analysis_tab_log)
-            ) { currentTab = AnalysisTab.LOG }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        when (currentTab) {
-            AnalysisTab.DASHBOARD -> DashboardTab(analysis = analysis, formatter = formatter)
-            AnalysisTab.ADDRESS -> AddressTab(analysis = analysis, formatter = formatter)
-            AnalysisTab.ABNORMAL -> AbnormalTab(analysis = analysis, formatter = formatter)
-            AnalysisTab.QUALITY -> QualityTab(analysis = analysis)
-            AnalysisTab.LOG -> FullLogTab(logs = logs, formatter = formatter)
-        }
-    }
-}
-
-@Composable
-private fun DashboardTab(
-    analysis: CommunicationAnalysisSnapshot,
-    formatter: SimpleDateFormat
-) {
-    if (analysis.slaveSummaries.isEmpty()) {
-        EmptyAnalysisState()
-        return
-    }
-
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-        contentPadding = PaddingValues(bottom = 12.dp)
-    ) {
-        item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                AnalysisMetric(
-                    modifier = Modifier.weight(1f),
-                    label = stringResource(R.string.analysis_metric_slaves),
-                    value = analysis.slaveSummaries.count { it.slaveId != 0 }.toString()
-                )
-                AnalysisMetric(
-                    modifier = Modifier.weight(1f),
-                    label = stringResource(R.string.analysis_metric_abnormal),
-                    value = analysis.abnormalEvents.size.toString()
-                )
+        Card(modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    CompactMetric(
+                        label = stringResource(R.string.analysis_metric_frames),
+                        value = analysis.totalFrames.toString(),
+                        modifier = Modifier.weight(1f)
+                    )
+                    CompactMetric(
+                        label = stringResource(R.string.analysis_metric_crc),
+                        value = analysis.crcErrorCount.toString(),
+                        modifier = Modifier.weight(1f)
+                    )
+                    CompactMetric(
+                        label = stringResource(R.string.analysis_metric_timeout),
+                        value = analysis.timeoutCount.toString(),
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = stringResource(
+                            R.string.analysis_connection_line,
+                            connectionStatusLabel(uiState),
+                            uiState.connectedUsbDeviceName ?: "-"
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Box {
+                        OutlinedButton(onClick = { menuExpanded = true }) {
+                            Text(viewModeLabel(currentMode, selectedSummary), style = MaterialTheme.typography.labelLarge)
+                            Icon(
+                                imageVector = Icons.Outlined.UnfoldMore,
+                                contentDescription = null,
+                                modifier = Modifier.padding(start = 4.dp)
+                            )
+                        }
+                        DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.analysis_tab_address)) },
+                                onClick = {
+                                    currentMode = AnalysisViewMode.ADDRESS
+                                    menuExpanded = false
+                                }
+                            )
+                            if (selectedSummary != null) {
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.analysis_tab_address_detail)) },
+                                    onClick = {
+                                        currentMode = AnalysisViewMode.ADDRESS_DETAIL
+                                        menuExpanded = false
+                                    }
+                                )
+                            }
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.analysis_tab_abnormal)) },
+                                onClick = {
+                                    currentMode = AnalysisViewMode.ABNORMAL
+                                    menuExpanded = false
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.analysis_tab_quality)) },
+                                onClick = {
+                                    currentMode = AnalysisViewMode.QUALITY
+                                    menuExpanded = false
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.analysis_tab_log)) },
+                                onClick = {
+                                    currentMode = AnalysisViewMode.LOG
+                                    menuExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
             }
         }
 
-        items(analysis.slaveSummaries) { summary ->
-            SummaryRow(summary = summary, formatter = formatter, compact = true)
+        Spacer(modifier = Modifier.height(12.dp))
+
+        when (currentMode) {
+            AnalysisViewMode.ADDRESS -> AddressTab(
+                analysis = analysis,
+                formatter = formatter,
+                onSelectSummary = { summary ->
+                    selectedSlaveId = summary.slaveId
+                    currentMode = AnalysisViewMode.ADDRESS_DETAIL
+                }
+            )
+            AnalysisViewMode.ADDRESS_DETAIL -> AddressDetailTab(
+                summary = selectedSummary,
+                summaries = addressDetails,
+                formatter = formatter,
+                onBackToAddress = { currentMode = AnalysisViewMode.ADDRESS }
+            )
+            AnalysisViewMode.ABNORMAL -> AbnormalTab(analysis = analysis, formatter = formatter)
+            AnalysisViewMode.QUALITY -> QualityTab(analysis = analysis)
+            AnalysisViewMode.LOG -> FullLogTab(logs = logs, formatter = formatter)
         }
     }
 }
@@ -233,7 +245,8 @@ private fun DashboardTab(
 @Composable
 private fun AddressTab(
     analysis: CommunicationAnalysisSnapshot,
-    formatter: SimpleDateFormat
+    formatter: SimpleDateFormat,
+    onSelectSummary: (SlaveCommunicationSummary) -> Unit
 ) {
     if (analysis.slaveSummaries.isEmpty()) {
         EmptyAnalysisState()
@@ -242,27 +255,101 @@ private fun AddressTab(
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
         contentPadding = PaddingValues(bottom = 12.dp)
     ) {
         items(analysis.slaveSummaries) { summary ->
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    SummaryRow(summary = summary, formatter = formatter, compact = false)
-                    summary.lastRequestHex?.let { requestHex ->
-                        Spacer(modifier = Modifier.height(8.dp))
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onSelectSummary(summary) }
+            ) {
+                CompactSummaryRow(summary = summary, formatter = formatter)
+            }
+        }
+    }
+}
+
+@Composable
+private fun AddressDetailTab(
+    summary: SlaveCommunicationSummary?,
+    summaries: List<AddressSummary>,
+    formatter: SimpleDateFormat,
+    onBackToAddress: () -> Unit
+) {
+    if (summary == null) {
+        EmptyAnalysisState()
+        return
+    }
+
+    Column(modifier = Modifier.fillMaxSize()) {
+        OutlinedButton(onClick = onBackToAddress) {
+            Text(stringResource(R.string.analysis_back_to_address))
+        }
+        Spacer(modifier = Modifier.height(10.dp))
+        Card(modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.padding(14.dp)) {
+                Text(
+                    text = if (summary.slaveId == 0) stringResource(R.string.analysis_broadcast_addr) else stringResource(R.string.summary_addr, summary.slaveId),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = stringResource(
+                        R.string.analysis_last_seen,
+                        summary.lastSeenTimestamp?.let { formatter.format(Date(it)) } ?: "-"
+                    ),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(10.dp))
+        if (summaries.isEmpty()) {
+            EmptyAnalysisState(text = stringResource(R.string.analysis_detail_empty))
+            return
+        }
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            contentPadding = PaddingValues(bottom = 12.dp)
+        ) {
+            items(summaries) { item ->
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = stringResource(R.string.summary_addr, item.startAddress),
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Text(
+                                text = stringResource(R.string.summary_count, item.count),
+                                style = MaterialTheme.typography.titleSmall,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = stringResource(R.string.analysis_last_request_hex, requestHex),
+                            text = stringResource(R.string.summary_slave_fc_qty, item.slaveId, "%02X".format(item.functionCode), item.quantity),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                    }
-                    summary.lastResponseHex?.let { responseHex ->
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = stringResource(R.string.analysis_last_response_hex, responseHex),
+                            text = stringResource(R.string.summary_last_seen, formatter.format(Date(item.lastSeenTimestamp))),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = item.sampleRequestHex,
+                            style = MaterialTheme.typography.bodySmall
                         )
                     }
                 }
@@ -293,54 +380,20 @@ private fun AbnormalTab(
 private fun QualityTab(analysis: CommunicationAnalysisSnapshot) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
         contentPadding = PaddingValues(bottom = 12.dp)
     ) {
         item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                AnalysisMetric(
-                    modifier = Modifier.weight(1f),
-                    label = stringResource(R.string.analysis_metric_frames),
-                    value = analysis.totalFrames.toString()
-                )
-                AnalysisMetric(
-                    modifier = Modifier.weight(1f),
-                    label = stringResource(R.string.analysis_metric_truncated),
-                    value = analysis.truncatedFrameCount.toString()
-                )
-            }
-        }
-
-        item {
             Card(modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    QualityLine(
-                        label = stringResource(R.string.analysis_quality_crc),
-                        value = analysis.crcErrorCount.toString()
-                    )
-                    QualityLine(
-                        label = stringResource(R.string.analysis_quality_timeout),
-                        value = analysis.timeoutCount.toString()
-                    )
-                    QualityLine(
-                        label = stringResource(R.string.analysis_quality_min),
-                        value = analysis.minResponseTimeMs?.let { "$it ms" } ?: "-"
-                    )
-                    QualityLine(
-                        label = stringResource(R.string.analysis_quality_avg),
-                        value = analysis.avgResponseTimeMs?.let { "$it ms" } ?: "-"
-                    )
-                    QualityLine(
-                        label = stringResource(R.string.analysis_quality_max),
-                        value = analysis.maxResponseTimeMs?.let { "$it ms" } ?: "-"
-                    )
-                    QualityLine(
-                        label = stringResource(R.string.analysis_quality_jitter),
-                        value = intervalJitterLabel(analysis.intervalJitter)
-                    )
+                Column(modifier = Modifier.padding(14.dp)) {
+                    QualityLine(label = stringResource(R.string.analysis_metric_frames), value = analysis.totalFrames.toString())
+                    QualityLine(label = stringResource(R.string.analysis_metric_truncated), value = analysis.truncatedFrameCount.toString())
+                    QualityLine(label = stringResource(R.string.analysis_quality_crc), value = analysis.crcErrorCount.toString())
+                    QualityLine(label = stringResource(R.string.analysis_quality_timeout), value = analysis.timeoutCount.toString())
+                    QualityLine(label = stringResource(R.string.analysis_quality_min), value = analysis.minResponseTimeMs?.let { "$it ms" } ?: "-")
+                    QualityLine(label = stringResource(R.string.analysis_quality_avg), value = analysis.avgResponseTimeMs?.let { "$it ms" } ?: "-")
+                    QualityLine(label = stringResource(R.string.analysis_quality_max), value = analysis.maxResponseTimeMs?.let { "$it ms" } ?: "-")
+                    QualityLine(label = stringResource(R.string.analysis_quality_jitter), value = intervalJitterLabel(analysis.intervalJitter))
                 }
             }
         }
@@ -362,22 +415,20 @@ private fun FullLogTab(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 10.dp)
+                    .padding(vertical = 8.dp)
             ) {
                 Text(
                     text = "[${formatter.format(Date(log.timestamp))}] ${log.category.name} / ${log.direction.name}",
-                    style = MaterialTheme.typography.labelLarge
+                    style = MaterialTheme.typography.labelMedium
                 )
                 if (log.hex.isNotBlank()) {
-                    Text(
-                        text = log.hex,
-                        style = MaterialTheme.typography.bodyMedium
-                    )
+                    Text(text = log.hex, style = MaterialTheme.typography.bodySmall)
                 }
                 if (log.note.isNotBlank()) {
                     Text(
                         text = log.note,
-                        style = MaterialTheme.typography.bodySmall
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -387,12 +438,11 @@ private fun FullLogTab(
 }
 
 @Composable
-private fun SummaryRow(
+private fun CompactSummaryRow(
     summary: SlaveCommunicationSummary,
-    formatter: SimpleDateFormat,
-    compact: Boolean
+    formatter: SimpleDateFormat
 ) {
-    Column {
+    Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -400,13 +450,12 @@ private fun SummaryRow(
         ) {
             Text(
                 text = if (summary.slaveId == 0) stringResource(R.string.analysis_broadcast_addr) else stringResource(R.string.summary_addr, summary.slaveId),
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold
             )
             StatusPill(summary.status)
         }
-
-        Spacer(modifier = Modifier.height(6.dp))
+        Spacer(modifier = Modifier.height(4.dp))
         Text(
             text = stringResource(
                 R.string.analysis_last_seen,
@@ -415,51 +464,26 @@ private fun SummaryRow(
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
-
+        Spacer(modifier = Modifier.height(6.dp))
+        Text(
+            text = stringResource(R.string.analysis_last_request_line, summary.lastRequestSummary ?: "-"),
+            style = MaterialTheme.typography.bodySmall
+        )
+        Text(
+            text = stringResource(R.string.analysis_last_response_line, summary.lastResponseSummary ?: "-"),
+            modifier = Modifier.padding(top = 2.dp),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
         Spacer(modifier = Modifier.height(8.dp))
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            AnalysisMetric(
-                modifier = Modifier.weight(1f),
-                label = stringResource(R.string.analysis_count_success),
-                value = metricValue(summary.successCount, summary.slaveId)
-            )
-            AnalysisMetric(
-                modifier = Modifier.weight(1f),
-                label = stringResource(R.string.analysis_count_timeout),
-                value = metricValue(summary.timeoutCount, summary.slaveId)
-            )
-            AnalysisMetric(
-                modifier = Modifier.weight(1f),
-                label = stringResource(R.string.analysis_count_crc),
-                value = metricValue(summary.crcErrorCount, summary.slaveId)
-            )
-            AnalysisMetric(
-                modifier = Modifier.weight(1f),
-                label = stringResource(R.string.analysis_count_exception),
-                value = metricValue(summary.exceptionCount, summary.slaveId)
-            )
-        }
-
-        if (!compact) {
-            Spacer(modifier = Modifier.height(10.dp))
-            Text(
-                text = stringResource(
-                    R.string.analysis_last_request_line,
-                    summary.lastRequestSummary ?: "-"
-                ),
-                style = MaterialTheme.typography.bodyMedium
-            )
-            Text(
-                text = stringResource(
-                    R.string.analysis_last_response_line,
-                    summary.lastResponseSummary ?: "-"
-                ),
-                modifier = Modifier.padding(top = 4.dp),
-                style = MaterialTheme.typography.bodyMedium
-            )
+            InlineCount(stringResource(R.string.analysis_count_success), metricValue(summary.successCount, summary.slaveId), Modifier.weight(1f))
+            InlineCount(stringResource(R.string.analysis_count_timeout), metricValue(summary.timeoutCount, summary.slaveId), Modifier.weight(1f))
+            InlineCount(stringResource(R.string.analysis_count_crc), metricValue(summary.crcErrorCount, summary.slaveId), Modifier.weight(1f))
+            InlineCount(stringResource(R.string.analysis_count_exception), metricValue(summary.exceptionCount, summary.slaveId), Modifier.weight(1f))
         }
     }
 }
@@ -478,20 +502,13 @@ private fun AbnormalRow(
             text = buildString {
                 append(formatter.format(Date(event.timestamp)))
                 append("  ")
-                append(
-                    event.slaveId?.let {
-                        if (it == 0) "Addr 00" else "Addr %02d".format(it)
-                    } ?: "--"
-                )
+                append(event.slaveId?.let { if (it == 0) "Addr 00" else "Addr %02d".format(it) } ?: "--")
                 append("  ")
                 append(abnormalTypeLabel(event.type))
             },
             style = MaterialTheme.typography.labelLarge
         )
-        Text(
-            text = event.message,
-            style = MaterialTheme.typography.bodyMedium
-        )
+        Text(text = event.message, style = MaterialTheme.typography.bodyMedium)
         event.hex?.let { hex ->
             Text(
                 text = hex,
@@ -503,55 +520,26 @@ private fun AbnormalRow(
 }
 
 @Composable
-private fun AnalysisMetric(
-    modifier: Modifier = Modifier,
+private fun CompactMetric(
     label: String,
-    value: String
+    value: String,
+    modifier: Modifier = Modifier
 ) {
-    Card(modifier = modifier) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(modifier = Modifier.height(6.dp))
-            Text(
-                text = value,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.SemiBold
-            )
-        }
+    Column(modifier = modifier.padding(end = 8.dp)) {
+        Text(text = label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(text = value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
     }
 }
 
 @Composable
-private fun AnalysisTabButton(
-    modifier: Modifier,
-    selected: Boolean,
+private fun InlineCount(
     label: String,
-    onClick: () -> Unit
+    value: String,
+    modifier: Modifier = Modifier
 ) {
-    if (selected) {
-        Button(
-            onClick = onClick,
-            modifier = modifier
-        ) {
-            Text(
-                text = label,
-                textAlign = TextAlign.Center
-            )
-        }
-    } else {
-        OutlinedButton(
-            onClick = onClick,
-            modifier = modifier
-        ) {
-            Text(
-                text = label,
-                textAlign = TextAlign.Center
-            )
-        }
+    Column(modifier = modifier) {
+        Text(text = label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(text = value, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
     }
 }
 
@@ -570,13 +558,9 @@ private fun StatusPill(status: SlaveStatus) {
     Box(
         modifier = Modifier
             .background(color = color.copy(alpha = 0.16f), shape = MaterialTheme.shapes.small)
-            .padding(horizontal = 10.dp, vertical = 4.dp)
+            .padding(horizontal = 8.dp, vertical = 3.dp)
     ) {
-        Text(
-            text = label,
-            color = color,
-            style = MaterialTheme.typography.labelMedium
-        )
+        Text(text = label, color = color, style = MaterialTheme.typography.labelSmall)
     }
 }
 
@@ -588,27 +572,17 @@ private fun QualityLine(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp),
+            .padding(vertical = 3.dp),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyMedium
-        )
-        Text(
-            text = value,
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.SemiBold
-        )
+        Text(text = label, style = MaterialTheme.typography.bodyMedium)
+        Text(text = value, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
     }
 }
 
 @Composable
 private fun EmptyAnalysisState(text: String = stringResource(R.string.analysis_empty)) {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Text(
             text = text,
             style = MaterialTheme.typography.bodyLarge,
@@ -621,11 +595,11 @@ private fun EmptyAnalysisState(text: String = stringResource(R.string.analysis_e
 @Composable
 private fun connectionStatusLabel(uiState: MainUiState): String {
     return when (uiState.usbConnectionStatus) {
-        com.example.meterdemo.viewmodel.UsbConnectionStatus.DISCONNECTED -> stringResource(R.string.usb_status_disconnected)
-        com.example.meterdemo.viewmodel.UsbConnectionStatus.CONNECTING -> stringResource(R.string.usb_status_connecting)
-        com.example.meterdemo.viewmodel.UsbConnectionStatus.CONNECTED -> stringResource(R.string.usb_status_connected)
-        com.example.meterdemo.viewmodel.UsbConnectionStatus.CONNECT_FAILED -> stringResource(R.string.usb_status_connect_failed)
-        com.example.meterdemo.viewmodel.UsbConnectionStatus.ERROR -> stringResource(R.string.usb_status_error)
+        UsbConnectionStatus.DISCONNECTED -> stringResource(R.string.usb_status_disconnected)
+        UsbConnectionStatus.CONNECTING -> stringResource(R.string.usb_status_connecting)
+        UsbConnectionStatus.CONNECTED -> stringResource(R.string.usb_status_connected)
+        UsbConnectionStatus.CONNECT_FAILED -> stringResource(R.string.usb_status_connect_failed)
+        UsbConnectionStatus.ERROR -> stringResource(R.string.usb_status_error)
     }
 }
 
@@ -647,6 +621,27 @@ private fun abnormalTypeLabel(type: AbnormalType): String {
         AbnormalType.EXCEPTION -> stringResource(R.string.analysis_abnormal_exception)
         AbnormalType.TRUNCATED -> stringResource(R.string.analysis_abnormal_truncated)
         AbnormalType.UNEXPECTED_LENGTH -> stringResource(R.string.analysis_abnormal_unexpected)
+    }
+}
+
+@Composable
+private fun viewModeLabel(
+    mode: AnalysisViewMode,
+    selectedSummary: SlaveCommunicationSummary?
+): String {
+    return when (mode) {
+        AnalysisViewMode.ADDRESS -> stringResource(R.string.analysis_tab_address)
+        AnalysisViewMode.ADDRESS_DETAIL -> if (selectedSummary == null) {
+            stringResource(R.string.analysis_tab_address)
+        } else {
+            stringResource(
+                R.string.analysis_tab_address_detail_selected,
+                if (selectedSummary.slaveId == 0) "00" else "%02d".format(selectedSummary.slaveId)
+            )
+        }
+        AnalysisViewMode.ABNORMAL -> stringResource(R.string.analysis_tab_abnormal)
+        AnalysisViewMode.QUALITY -> stringResource(R.string.analysis_tab_quality)
+        AnalysisViewMode.LOG -> stringResource(R.string.analysis_tab_log)
     }
 }
 
