@@ -59,6 +59,7 @@ fun MeterDemoApp(viewModel: MainViewModel) {
             onCycleAnalysisBaudRate = viewModel::cycleAnalysisBaudRate,
             onCycleAnalysisParity = viewModel::cycleAnalysisParity,
             onCycleAnalysisStopBits = viewModel::cycleAnalysisStopBits,
+            onToggleAnalysisAutoDetect = viewModel::toggleAnalysisSerialAutoDetect,
             onSelectAppMode = viewModel::selectAppMode,
             onToggleMainViewMode = viewModel::toggleMainViewMode,
             onLanguageSelected = viewModel::selectAppLanguage,

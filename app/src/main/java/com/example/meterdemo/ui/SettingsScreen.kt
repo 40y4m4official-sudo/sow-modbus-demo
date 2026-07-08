@@ -59,6 +59,7 @@ fun SettingsScreen(
     onCycleAnalysisBaudRate: () -> Unit,
     onCycleAnalysisParity: () -> Unit,
     onCycleAnalysisStopBits: () -> Unit,
+    onToggleAnalysisAutoDetect: () -> Unit,
     onSelectAppMode: (AppMode) -> Unit,
     onToggleMainViewMode: () -> Unit,
     onLanguageSelected: (AppLanguage) -> Unit,
@@ -74,6 +75,7 @@ fun SettingsScreen(
     var presetExpanded by remember { mutableStateOf(false) }
     var customHex by remember { mutableStateOf("") }
     var languageExpanded by remember { mutableStateOf(false) }
+    val controlsLocked = uiState.analysisAutoDetect.isRunning
     val connectionStatusLabel = when (uiState.usbConnectionStatus) {
         UsbConnectionStatus.DISCONNECTED -> stringResource(R.string.usb_status_disconnected)
         UsbConnectionStatus.CONNECTING -> stringResource(R.string.usb_status_connecting)
@@ -90,7 +92,7 @@ fun SettingsScreen(
     ) {
         ScreenHeader(
             title = stringResource(R.string.settings_title),
-            onBack = onBack,
+            onBack = { if (!controlsLocked) onBack() },
             actions = {
                 Box {
                     HeaderIconButton(
@@ -145,20 +147,20 @@ fun SettingsScreen(
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         if (uiState.appMode == AppMode.METER_DEMO) {
-                            Button(onClick = { onSelectAppMode(AppMode.METER_DEMO) }, modifier = Modifier.weight(1f)) {
+                            Button(onClick = { onSelectAppMode(AppMode.METER_DEMO) }, modifier = Modifier.weight(1f), enabled = !controlsLocked) {
                                 Text(stringResource(R.string.settings_mode_meter_demo))
                             }
                         } else {
-                            OutlinedButton(onClick = { onSelectAppMode(AppMode.METER_DEMO) }, modifier = Modifier.weight(1f)) {
+                            OutlinedButton(onClick = { onSelectAppMode(AppMode.METER_DEMO) }, modifier = Modifier.weight(1f), enabled = !controlsLocked) {
                                 Text(stringResource(R.string.settings_mode_meter_demo))
                             }
                         }
                         if (uiState.appMode == AppMode.COMM_ANALYSIS) {
-                            Button(onClick = { onSelectAppMode(AppMode.COMM_ANALYSIS) }, modifier = Modifier.weight(1f)) {
+                            Button(onClick = { onSelectAppMode(AppMode.COMM_ANALYSIS) }, modifier = Modifier.weight(1f), enabled = !controlsLocked) {
                                 Text(stringResource(R.string.settings_mode_comm_analysis))
                             }
                         } else {
-                            OutlinedButton(onClick = { onSelectAppMode(AppMode.COMM_ANALYSIS) }, modifier = Modifier.weight(1f)) {
+                            OutlinedButton(onClick = { onSelectAppMode(AppMode.COMM_ANALYSIS) }, modifier = Modifier.weight(1f), enabled = !controlsLocked) {
                                 Text(stringResource(R.string.settings_mode_comm_analysis))
                             }
                         }
@@ -192,7 +194,8 @@ fun SettingsScreen(
                     uiState = uiState,
                     onCycleAnalysisBaudRate = onCycleAnalysisBaudRate,
                     onCycleAnalysisParity = onCycleAnalysisParity,
-                    onCycleAnalysisStopBits = onCycleAnalysisStopBits
+                    onCycleAnalysisStopBits = onCycleAnalysisStopBits,
+                    onToggleAnalysisAutoDetect = onToggleAnalysisAutoDetect
                 )
             }
 
@@ -248,7 +251,7 @@ fun SettingsScreen(
                         )
                     }
                     Spacer(modifier = Modifier.height(12.dp))
-                    OutlinedButton(onClick = onRefreshUsbDevices, modifier = Modifier.fillMaxWidth()) {
+                    OutlinedButton(onClick = onRefreshUsbDevices, modifier = Modifier.fillMaxWidth(), enabled = !controlsLocked) {
                         Text(stringResource(R.string.settings_refresh_usb_devices))
                     }
                     Spacer(modifier = Modifier.height(12.dp))
@@ -290,18 +293,18 @@ fun SettingsScreen(
                                     )
                                     Spacer(modifier = Modifier.height(12.dp))
                                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                        OutlinedButton(onClick = { onRequestUsbPermission(device.deviceName) }, modifier = Modifier.weight(1f)) {
+                                        OutlinedButton(onClick = { onRequestUsbPermission(device.deviceName) }, modifier = Modifier.weight(1f), enabled = !controlsLocked) {
                                             Text(stringResource(R.string.settings_permission))
                                         }
                                         if (isConnected) {
-                                            Button(onClick = onDisconnectUsbDevice, modifier = Modifier.weight(1f)) {
+                                            Button(onClick = onDisconnectUsbDevice, modifier = Modifier.weight(1f), enabled = !controlsLocked) {
                                                 Text(stringResource(R.string.settings_disconnect))
                                             }
                                         } else {
                                             Button(
                                                 onClick = { onConnectUsbDevice(device.deviceName) },
                                                 modifier = Modifier.weight(1f),
-                                                enabled = device.hasPermission
+                                                enabled = device.hasPermission && !controlsLocked
                                             ) {
                                                 Text(stringResource(R.string.settings_connect))
                                             }
@@ -350,7 +353,7 @@ fun SettingsScreen(
                         style = MaterialTheme.typography.bodyMedium
                     )
                     Spacer(modifier = Modifier.height(12.dp))
-                    Button(onClick = onOpenLogs, modifier = Modifier.fillMaxWidth()) {
+                    Button(onClick = onOpenLogs, modifier = Modifier.fillMaxWidth(), enabled = !controlsLocked) {
                         Text(stringResource(R.string.settings_open_logs))
                     }
                 }
@@ -431,7 +434,7 @@ fun SettingsScreen(
                     Button(
                         onClick = onCheckAndDownloadUpdate,
                         modifier = Modifier.fillMaxWidth(),
-                        enabled = !uiState.appUpdate.isChecking && !uiState.appUpdate.isDownloading
+                        enabled = !controlsLocked && !uiState.appUpdate.isChecking && !uiState.appUpdate.isDownloading
                     ) {
                         Text(
                             when {
@@ -560,8 +563,10 @@ private fun AnalysisSerialSettingsCard(
     uiState: MainUiState,
     onCycleAnalysisBaudRate: () -> Unit,
     onCycleAnalysisParity: () -> Unit,
-    onCycleAnalysisStopBits: () -> Unit
+    onCycleAnalysisStopBits: () -> Unit,
+    onToggleAnalysisAutoDetect: () -> Unit
 ) {
+    val controlsLocked = uiState.analysisAutoDetect.isRunning
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
@@ -576,18 +581,111 @@ private fun AnalysisSerialSettingsCard(
             )
             Spacer(modifier = Modifier.height(12.dp))
             Row(modifier = Modifier.fillMaxWidth()) {
-                OutlinedButton(onClick = onCycleAnalysisBaudRate, modifier = Modifier.weight(1f)) {
+                OutlinedButton(
+                    onClick = onCycleAnalysisBaudRate,
+                    modifier = Modifier.weight(1f),
+                    enabled = !uiState.analysisAutoDetect.isRunning
+                ) {
                     Text(stringResource(R.string.settings_analysis_baud, uiState.analysisBaudRate))
                 }
                 Spacer(modifier = Modifier.width(12.dp))
-                OutlinedButton(onClick = onCycleAnalysisParity, modifier = Modifier.weight(1f)) {
+                OutlinedButton(
+                    onClick = onCycleAnalysisParity,
+                    modifier = Modifier.weight(1f),
+                    enabled = !uiState.analysisAutoDetect.isRunning
+                ) {
                     Text(stringResource(R.string.settings_analysis_parity, uiState.analysisParity.label))
                 }
             }
             Spacer(modifier = Modifier.height(12.dp))
-            OutlinedButton(onClick = onCycleAnalysisStopBits, modifier = Modifier.fillMaxWidth()) {
+            OutlinedButton(
+                onClick = onCycleAnalysisStopBits,
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !uiState.analysisAutoDetect.isRunning
+            ) {
                 Text(stringResource(R.string.settings_analysis_stop_bits, uiState.analysisStopBits))
             }
+            Spacer(modifier = Modifier.height(12.dp))
+            if (controlsLocked) {
+                OutlinedButton(onClick = onToggleAnalysisAutoDetect, modifier = Modifier.fillMaxWidth()) {
+                    Text(stringResource(R.string.edit_meter_cancel))
+                }
+            } else {
+                Button(onClick = onToggleAnalysisAutoDetect, modifier = Modifier.fillMaxWidth()) {
+                    Text(stringResource(R.string.settings_analysis_auto_detect_start))
+                }
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = stringResource(R.string.settings_analysis_auto_detect_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            if (uiState.analysisAutoDetect.statusMessage.isNotBlank()) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = uiState.analysisAutoDetect.statusMessage,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            uiState.analysisAutoDetect.progressText?.let { progress ->
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = progress,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            uiState.analysisAutoDetect.activeCandidateLabel?.let { label ->
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = stringResource(R.string.settings_analysis_auto_detect_current, label),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            uiState.analysisAutoDetect.bestCandidateLabel?.let { label ->
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = stringResource(
+                        R.string.settings_analysis_auto_detect_best,
+                        label,
+                        uiState.analysisAutoDetect.bestCandidateConfidence?.let { autoDetectConfidenceLabel(it) }
+                            ?: stringResource(R.string.settings_analysis_auto_detect_confidence_low)
+                    ),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            if (uiState.analysisAutoDetect.recentResults.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(12.dp))
+                uiState.analysisAutoDetect.recentResults.forEach { result ->
+                    Text(
+                        text = stringResource(
+                            R.string.settings_analysis_auto_detect_result_line,
+                            result.label,
+                            autoDetectConfidenceLabel(result.confidence),
+                            result.score,
+                            result.validFrameCount,
+                            result.crcErrorCount,
+                            result.truncatedFrameCount
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                }
+            }
         }
+    }
+}
+
+@Composable
+private fun autoDetectConfidenceLabel(confidence: com.example.meterdemo.analysis.DetectionConfidence): String {
+    return when (confidence) {
+        com.example.meterdemo.analysis.DetectionConfidence.HIGH -> stringResource(R.string.settings_analysis_auto_detect_confidence_high)
+        com.example.meterdemo.analysis.DetectionConfidence.MEDIUM -> stringResource(R.string.settings_analysis_auto_detect_confidence_medium)
+        com.example.meterdemo.analysis.DetectionConfidence.LOW -> stringResource(R.string.settings_analysis_auto_detect_confidence_low)
     }
 }

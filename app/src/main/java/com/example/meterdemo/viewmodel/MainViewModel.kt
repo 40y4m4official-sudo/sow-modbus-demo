@@ -13,6 +13,10 @@ import com.example.meterdemo.BuildConfig
 import com.example.meterdemo.R
 import com.example.meterdemo.analysis.CommunicationAnalysisSnapshot
 import com.example.meterdemo.analysis.CommunicationAnalysisTracker
+import com.example.meterdemo.analysis.DetectionConfidence
+import com.example.meterdemo.analysis.SerialSettingsAutoDetector
+import com.example.meterdemo.analysis.SerialSettingsCandidate
+import com.example.meterdemo.analysis.SerialSettingsDetectionResult
 import com.example.meterdemo.localization.AppLanguage
 import com.example.meterdemo.localization.AppLanguageManager
 import com.example.meterdemo.logging.CommCategory
@@ -77,6 +81,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private var analysisBaudRate: Int = 19200
     private var analysisParity: SerialParity = SerialParity.EVEN
     private var analysisStopBits: Int = 1
+    private var analysisAutoDetectJob: Job? = null
+    private var analysisAutoDetectDeviceName: String? = null
+    private var activeAutoDetector: SerialSettingsAutoDetector? = null
     private var appLanguage: AppLanguage = appLanguageManager.getCurrentLanguage()
     private val usbSerialConnectionManager = UsbSerialConnectionManager(
         context = application,
@@ -225,6 +232,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun selectAppMode(mode: AppMode) {
         if (appMode == mode) return
 
+        cancelAnalysisAutoDetect(appString(R.string.settings_analysis_auto_detect_cancelled))
+
         val wasConnected = _uiState.value.connectedUsbDeviceName != null
         if (wasConnected) {
             usbSerialConnectionManager.disconnect()
@@ -251,10 +260,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         if (language == appLanguage) return
         appLanguage = language
         appLanguageManager.setLanguage(language)
-        refreshUiState(selectedPointIndex = _uiState.value.selectedPointIndex)
+        refreshUiState(
+            selectedPointIndex = _uiState.value.selectedPointIndex,
+            appLanguage = appLanguage,
+            analysisAutoDetect = relocalizeAnalysisAutoDetectState(_uiState.value.analysisAutoDetect)
+        )
     }
 
     fun cycleAnalysisBaudRate() {
+        cancelAnalysisAutoDetect(
+            appString(R.string.settings_analysis_auto_detect_cancelled_manual)
+        )
         val currentIndex = SUPPORTED_BAUD_RATES.indexOf(analysisBaudRate).takeIf { it >= 0 } ?: 0
         analysisBaudRate = SUPPORTED_BAUD_RATES[(currentIndex + 1) % SUPPORTED_BAUD_RATES.size]
         persistState()
@@ -262,15 +278,50 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun cycleAnalysisParity() {
+        cancelAnalysisAutoDetect(
+            appString(R.string.settings_analysis_auto_detect_cancelled_manual)
+        )
         analysisParity = analysisParity.next()
         persistState()
         refreshUiState(selectedPointIndex = _uiState.value.selectedPointIndex)
     }
 
     fun cycleAnalysisStopBits() {
+        cancelAnalysisAutoDetect(
+            appString(R.string.settings_analysis_auto_detect_cancelled_manual)
+        )
         analysisStopBits = if (analysisStopBits == 1) 2 else 1
         persistState()
         refreshUiState(selectedPointIndex = _uiState.value.selectedPointIndex)
+    }
+
+    fun toggleAnalysisSerialAutoDetect() {
+        if (analysisAutoDetectJob != null) {
+            cancelAnalysisAutoDetect(appString(R.string.settings_analysis_auto_detect_cancelled))
+            return
+        }
+
+        if (appMode != AppMode.COMM_ANALYSIS) {
+            logger.info("Auto-detect is available only in communication analysis mode", CommCategory.SYSTEM)
+            return
+        }
+
+        val deviceName = _uiState.value.connectedUsbDeviceName
+        if (deviceName.isNullOrBlank()) {
+            logger.error("Connect a USB serial device before starting auto-detect", CommCategory.USB)
+            refreshUiState(
+                selectedPointIndex = _uiState.value.selectedPointIndex,
+                analysisAutoDetect = AnalysisAutoDetectUiState(
+                    statusMessage = appString(R.string.settings_analysis_auto_detect_connect_first)
+                )
+            )
+            return
+        }
+
+        analysisAutoDetectDeviceName = deviceName
+        analysisAutoDetectJob = viewModelScope.launch {
+            runAnalysisSerialAutoDetect(deviceName)
+        }
     }
 
     fun selectProfile(modelId: String) {
@@ -359,6 +410,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun disconnectUsbSerial() {
+        cancelAnalysisAutoDetect(appString(R.string.settings_analysis_auto_detect_cancelled_disconnect))
         usbSerialConnectionManager.disconnect()
     }
 
@@ -765,7 +817,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         editMeterDraft: MeterEditorDraft = _uiState.value.editMeterDraft,
         simulationRunning: Boolean = _uiState.value.simulationRunning,
         appUpdate: AppUpdateUiState = _uiState.value.appUpdate,
-        communicationAnalysis: CommunicationAnalysisSnapshot = communicationAnalysisTracker.snapshot()
+        communicationAnalysis: CommunicationAnalysisSnapshot = communicationAnalysisTracker.snapshot(),
+        analysisAutoDetect: AnalysisAutoDetectUiState = _uiState.value.analysisAutoDetect
     ) {
         val snapshots = repository.snapshot()
         val safeIndex = when {
@@ -803,6 +856,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             simulationRunning = simulationRunning,
             appUpdate = appUpdate,
             communicationAnalysis = communicationAnalysis,
+            analysisAutoDetect = analysisAutoDetect,
             editingExistingUserMeter = editingExistingUserMeter,
             draftReadOnly = draftReadOnly,
             selectedEditableUserModelId = selectedEditableUserModelId,
@@ -845,6 +899,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 statusMessage = appString(R.string.settings_update_ready)
             ),
             communicationAnalysis = communicationAnalysisTracker.snapshot(),
+            analysisAutoDetect = AnalysisAutoDetectUiState(),
             editingExistingUserMeter = false,
             draftReadOnly = false,
             selectedEditableUserModelId = null,
@@ -1236,6 +1291,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private fun appendUsbData(data: ByteArray, timestamp: Long) {
         if (appMode == AppMode.COMM_ANALYSIS) {
             communicationAnalysisTracker.onRawBytes(data, timestamp)
+            activeAutoDetector?.onRawBytes(data)
             refreshUiState(selectedPointIndex = _uiState.value.selectedPointIndex)
             return
         }
@@ -1262,6 +1318,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     override fun onCleared() {
         simulationJob?.cancel()
+        analysisAutoDetectJob?.cancel()
         lastSimulationTickElapsedRealtime = null
         usbSerialConnectionManager.release()
         super.onCleared()
@@ -1272,7 +1329,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         private const val REMOVED_DTSU_EDITABLE_MODEL_ID = "dtsu666-hw-editable"
         private const val REMOVED_MITSUBISHI_EDITABLE_MODEL_ID = "mitsubishi-me110ssr-mb-editable"
         private const val SIMULATION_TICK_MS = 1_000L
+        private const val AUTO_DETECT_OBSERVE_MS = 2_500L
+        private const val AUTO_DETECT_SWITCH_DELAY_MS = 350L
+        private const val AUTO_DETECT_MIN_VALID_STOP1 = 2
+        private const val AUTO_DETECT_MIN_SCORE_STOP1 = 40
         val SUPPORTED_BAUD_RATES = listOf(1200, 2400, 4800, 9600, 19200, 115200)
+        private val AUTO_DETECT_PARITIES = listOf(SerialParity.EVEN, SerialParity.NONE, SerialParity.ODD)
     }
 
     private fun parityLabel(value: Int): String {
@@ -1344,6 +1406,257 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private fun appString(resId: Int, vararg args: Any): String {
         return getApplication<Application>().getString(resId, *args)
     }
+
+    private fun relocalizeAnalysisAutoDetectState(
+        state: AnalysisAutoDetectUiState
+    ): AnalysisAutoDetectUiState {
+        if (!state.isRunning) return state
+
+        val localizedProgress = state.progressText?.let { progress ->
+            val numbers = Regex("(\\d+)").findAll(progress).map { it.value.toInt() }.toList()
+            if (numbers.size >= 2) {
+                appString(R.string.settings_analysis_auto_detect_progress, numbers[0], numbers[1])
+            } else {
+                progress
+            }
+        }
+
+        return state.copy(
+            statusMessage = appString(R.string.settings_analysis_auto_detect_running),
+            progressText = localizedProgress
+        )
+    }
+
+    private suspend fun runAnalysisSerialAutoDetect(deviceName: String) {
+        logger.info("Started analysis serial auto-detect", CommCategory.USB)
+        var reconnectHandled = false
+        usbSerialConnectionManager.disconnect()
+        delay(AUTO_DETECT_SWITCH_DELAY_MS)
+
+        val stop1Candidates = buildAutoDetectCandidates(stopBits = 1)
+        val stop2Candidates = buildAutoDetectCandidates(stopBits = 2)
+        val results = mutableListOf<SerialSettingsDetectionResult>()
+
+        try {
+            refreshUiState(
+                selectedPointIndex = _uiState.value.selectedPointIndex,
+                analysisAutoDetect = AnalysisAutoDetectUiState(
+                    isRunning = true,
+                    statusMessage = appString(R.string.settings_analysis_auto_detect_running),
+                    progressText = appString(R.string.settings_analysis_auto_detect_progress, 0, stop1Candidates.size)
+                )
+            )
+
+            results += evaluateAutoDetectCandidates(
+                deviceName = deviceName,
+                candidates = stop1Candidates,
+                totalCandidates = stop1Candidates.size,
+                completedBeforeStart = 0,
+                existingResults = results
+            )
+
+            val bestStop1 = results.maxWithOrNull(autoDetectResultComparator())
+            val shouldTryStop2 = bestStop1 == null ||
+                bestStop1.validFrameCount < AUTO_DETECT_MIN_VALID_STOP1 ||
+                bestStop1.score < AUTO_DETECT_MIN_SCORE_STOP1
+
+            if (shouldTryStop2) {
+                results += evaluateAutoDetectCandidates(
+                    deviceName = deviceName,
+                    candidates = stop2Candidates,
+                    totalCandidates = stop1Candidates.size + stop2Candidates.size,
+                    completedBeforeStart = stop1Candidates.size,
+                    existingResults = results
+                )
+            }
+
+            val best = results.maxWithOrNull(autoDetectResultComparator())
+            if (best != null && best.validFrameCount > 0) {
+                analysisBaudRate = best.candidate.baudRate
+                analysisParity = best.candidate.parity
+                analysisStopBits = best.candidate.stopBits
+                persistState()
+                logger.info("Applied auto-detected serial settings: ${best.candidate.label}", CommCategory.USB)
+                refreshUiState(
+                    selectedPointIndex = _uiState.value.selectedPointIndex,
+                    analysisAutoDetect = buildCompletedAutoDetectState(
+                        results = results,
+                        best = best,
+                        statusMessage = appString(
+                            R.string.settings_analysis_auto_detect_applied,
+                            best.candidate.label
+                        )
+                    )
+                )
+                reconnectAnalysisDevice(deviceName)
+                reconnectHandled = true
+            } else {
+                logger.info("Auto-detect finished without a strong candidate", CommCategory.USB)
+                refreshUiState(
+                    selectedPointIndex = _uiState.value.selectedPointIndex,
+                    analysisAutoDetect = buildCompletedAutoDetectState(
+                        results = results,
+                        best = null,
+                        statusMessage = appString(R.string.settings_analysis_auto_detect_no_result)
+                    )
+                )
+                reconnectAnalysisDevice(deviceName)
+                reconnectHandled = true
+            }
+        } finally {
+            if (!reconnectHandled && appMode == AppMode.COMM_ANALYSIS && analysisAutoDetectDeviceName == deviceName) {
+                reconnectAnalysisDevice(deviceName)
+            }
+            activeAutoDetector = null
+            analysisAutoDetectJob = null
+            analysisAutoDetectDeviceName = null
+        }
+    }
+
+    private suspend fun evaluateAutoDetectCandidates(
+        deviceName: String,
+        candidates: List<SerialSettingsCandidate>,
+        totalCandidates: Int,
+        completedBeforeStart: Int,
+        existingResults: List<SerialSettingsDetectionResult>
+    ): List<SerialSettingsDetectionResult> {
+        val newResults = mutableListOf<SerialSettingsDetectionResult>()
+        candidates.forEachIndexed { index, candidate ->
+            val completedCount = completedBeforeStart + index
+            refreshUiState(
+                selectedPointIndex = _uiState.value.selectedPointIndex,
+                analysisAutoDetect = AnalysisAutoDetectUiState(
+                    isRunning = true,
+                    statusMessage = appString(R.string.settings_analysis_auto_detect_running),
+                    progressText = appString(
+                        R.string.settings_analysis_auto_detect_progress,
+                        completedCount,
+                        totalCandidates
+                    ),
+                    activeCandidateLabel = candidate.label,
+                    recentResults = buildAutoDetectResultItems(existingResults + newResults)
+                )
+            )
+
+            val detector = SerialSettingsAutoDetector(candidate)
+            activeAutoDetector = detector
+
+            val connected = usbSerialConnectionManager.connect(
+                deviceName = deviceName,
+                baudRate = candidate.baudRate,
+                parity = candidate.parity.profileValue,
+                stopBits = candidate.stopBits
+            )
+
+            if (connected) {
+                delay(AUTO_DETECT_OBSERVE_MS)
+            }
+
+            activeAutoDetector = null
+            usbSerialConnectionManager.disconnect()
+            delay(AUTO_DETECT_SWITCH_DELAY_MS)
+
+            val result = detector.snapshot()
+            newResults += result
+            val best = (existingResults + newResults).maxWithOrNull(autoDetectResultComparator())
+
+            refreshUiState(
+                selectedPointIndex = _uiState.value.selectedPointIndex,
+                analysisAutoDetect = AnalysisAutoDetectUiState(
+                    isRunning = true,
+                    statusMessage = appString(R.string.settings_analysis_auto_detect_running),
+                    progressText = appString(
+                        R.string.settings_analysis_auto_detect_progress,
+                        completedCount + 1,
+                        totalCandidates
+                    ),
+                    activeCandidateLabel = candidate.label,
+                    bestCandidateLabel = best?.candidate?.label,
+                    bestCandidateConfidence = best?.confidence,
+                    recentResults = buildAutoDetectResultItems(existingResults + newResults)
+                )
+            )
+        }
+        return newResults
+    }
+
+    private fun reconnectAnalysisDevice(deviceName: String) {
+        if (appMode != AppMode.COMM_ANALYSIS) return
+        usbSerialConnectionManager.connect(
+            deviceName = deviceName,
+            baudRate = analysisBaudRate,
+            parity = analysisParity.profileValue,
+            stopBits = analysisStopBits
+        )
+    }
+
+    private fun cancelAnalysisAutoDetect(statusMessage: String) {
+        val running = analysisAutoDetectJob != null
+        analysisAutoDetectJob?.cancel()
+        analysisAutoDetectJob = null
+        activeAutoDetector = null
+        if (running) {
+            logger.info("Cancelled analysis serial auto-detect", CommCategory.USB)
+            refreshUiState(
+                selectedPointIndex = _uiState.value.selectedPointIndex,
+                analysisAutoDetect = _uiState.value.analysisAutoDetect.copy(
+                    isRunning = false,
+                    statusMessage = statusMessage,
+                    activeCandidateLabel = null
+                )
+            )
+        }
+    }
+
+    private fun buildAutoDetectCandidates(stopBits: Int): List<SerialSettingsCandidate> {
+        return SUPPORTED_BAUD_RATES.flatMap { baudRate ->
+            AUTO_DETECT_PARITIES.map { parity ->
+                SerialSettingsCandidate(
+                    baudRate = baudRate,
+                    parity = parity,
+                    stopBits = stopBits
+                )
+            }
+        }
+    }
+
+    private fun autoDetectResultComparator(): Comparator<SerialSettingsDetectionResult> {
+        return compareByDescending<SerialSettingsDetectionResult> { it.score }
+            .thenByDescending { it.validFrameCount }
+            .thenByDescending { it.confidence.ordinal }
+    }
+
+    private fun buildCompletedAutoDetectState(
+        results: List<SerialSettingsDetectionResult>,
+        best: SerialSettingsDetectionResult?,
+        statusMessage: String
+    ): AnalysisAutoDetectUiState {
+        return AnalysisAutoDetectUiState(
+            isRunning = false,
+            statusMessage = statusMessage,
+            bestCandidateLabel = best?.candidate?.label,
+            bestCandidateConfidence = best?.confidence,
+            recentResults = buildAutoDetectResultItems(results)
+        )
+    }
+
+    private fun buildAutoDetectResultItems(
+        results: List<SerialSettingsDetectionResult>
+    ): List<AnalysisAutoDetectResultItem> {
+        return results
+            .sortedWith(autoDetectResultComparator())
+            .take(3)
+            .map { result ->
+                AnalysisAutoDetectResultItem(
+                    label = result.candidate.label,
+                    score = result.score,
+                    validFrameCount = result.validFrameCount,
+                    crcErrorCount = result.crcErrorCount,
+                    truncatedFrameCount = result.truncatedFrameCount,
+                    confidence = result.confidence
+                )
+            }
+    }
 }
 
 private fun resolveCurrentAppVersion(
@@ -1384,6 +1697,7 @@ data class MainUiState(
     val simulationRunning: Boolean,
     val appUpdate: AppUpdateUiState,
     val communicationAnalysis: CommunicationAnalysisSnapshot,
+    val analysisAutoDetect: AnalysisAutoDetectUiState,
     val editingExistingUserMeter: Boolean,
     val draftReadOnly: Boolean,
     val selectedEditableUserModelId: String?,
@@ -1429,6 +1743,25 @@ data class AppUpdateUiState(
     val isDownloading: Boolean = false,
     val downloadProgressPercent: Int? = null,
     val statusMessage: String = ""
+)
+
+data class AnalysisAutoDetectUiState(
+    val isRunning: Boolean = false,
+    val statusMessage: String = "",
+    val progressText: String? = null,
+    val activeCandidateLabel: String? = null,
+    val bestCandidateLabel: String? = null,
+    val bestCandidateConfidence: DetectionConfidence? = null,
+    val recentResults: List<AnalysisAutoDetectResultItem> = emptyList()
+)
+
+data class AnalysisAutoDetectResultItem(
+    val label: String,
+    val score: Int,
+    val validFrameCount: Int,
+    val crcErrorCount: Int,
+    val truncatedFrameCount: Int,
+    val confidence: DetectionConfidence
 )
 
 private data class InstalledAppVersion(
