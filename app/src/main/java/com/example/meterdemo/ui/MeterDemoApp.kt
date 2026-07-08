@@ -6,6 +6,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import com.example.meterdemo.viewmodel.AppMode
 import com.example.meterdemo.viewmodel.MainViewModel
 
 private enum class Screen {
@@ -24,19 +25,27 @@ fun MeterDemoApp(viewModel: MainViewModel) {
     var currentScreen by rememberSaveable { mutableStateOf(Screen.Main) }
 
     when (currentScreen) {
-        Screen.Main -> MeterValuesScreen(
-            uiState = uiState,
-            onOpenSettings = { currentScreen = Screen.Settings },
-            onSelectPoint = viewModel::selectPoint,
-            onPrevious = viewModel::previousPoint,
-            onNext = viewModel::nextPoint,
-            onRawValueChange = viewModel::updateSelectedRawValue,
-            onApplyValue = viewModel::applySelectedRawValue,
-            onResetValues = viewModel::resetValues,
-            onSimulateRead = viewModel::simulateReadOfSelectedPoint,
-            onStartSimulation = viewModel::startSimulation,
-            onStopSimulation = viewModel::stopSimulation
-        )
+        Screen.Main -> if (uiState.appMode == AppMode.METER_DEMO) {
+            MeterValuesScreen(
+                uiState = uiState,
+                onOpenSettings = { currentScreen = Screen.Settings },
+                onSelectPoint = viewModel::selectPoint,
+                onPrevious = viewModel::previousPoint,
+                onNext = viewModel::nextPoint,
+                onRawValueChange = viewModel::updateSelectedRawValue,
+                onApplyValue = viewModel::applySelectedRawValue,
+                onResetValues = viewModel::resetValues,
+                onSimulateRead = viewModel::simulateReadOfSelectedPoint,
+                onStartSimulation = viewModel::startSimulation,
+                onStopSimulation = viewModel::stopSimulation
+            )
+        } else {
+            CommunicationAnalysisScreen(
+                uiState = uiState,
+                logs = logs,
+                onOpenSettings = { currentScreen = Screen.Settings }
+            )
+        }
 
         Screen.Settings -> SettingsScreen(
             uiState = uiState,
@@ -46,6 +55,7 @@ fun MeterDemoApp(viewModel: MainViewModel) {
             onOpenEditMeter = { currentScreen = Screen.EditMeter },
             onSlaveIdChange = viewModel::updateSlaveIdInput,
             onApplySlaveId = viewModel::applySlaveId,
+            onSelectAppMode = viewModel::selectAppMode,
             onToggleMainViewMode = viewModel::toggleMainViewMode,
             onLanguageSelected = viewModel::selectAppLanguage,
             onOpenLogs = { currentScreen = Screen.Logs },

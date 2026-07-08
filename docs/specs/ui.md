@@ -191,3 +191,30 @@ Settings 画面の最下部に配置する。
 - `app/src/main/java/com/example/meterdemo/ui/*`
 - `app/src/main/java/com/example/meterdemo/viewmodel/MainViewModel.kt`
 - `app/src/main/java/com/example/meterdemo/localization/*`
+
+## 通信解析モード
+
+Settings 画面の最上部にアプリモード切替を配置する。
+
+- `メーターデモ`
+- `通信解析`
+
+通信解析モードの意図:
+
+- デイジーチェーンへ組み込んだ状態で現場通信を受動監視する
+- 現場機器へ影響を与えないことを最優先とする
+- アプリは RS-485 ラインへ応答を書き戻さない
+
+通信解析モードのメイン画面:
+
+- 一覧ダッシュボード
+- スレーブアドレス別ビュー
+- 異常ログビュー
+- 通信品質ビュー
+- 全ログビュー
+
+通信解析モード中の Settings 画面:
+
+- USB 接続設定とログ導線は通常どおり表示する
+- Comm Test セクションは表示しない
+- 画面上に「応答を返さない」旨の注意文を表示する

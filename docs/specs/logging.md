@@ -117,3 +117,36 @@
 - `app/src/main/java/com/example/meterdemo/ui/LogsScreen.kt`
 - `app/src/main/java/com/example/meterdemo/ui/LogSummaryScreen.kt`
 - `app/src/main/java/com/example/meterdemo/usb/UsbRequestFrameAssembler.kt`
+
+## 通信解析ビュー
+
+通信解析モードでは既存ログを元に受信フレームを見やすく再集計する。
+
+表示対象:
+
+- 全ログビュー
+- スレーブアドレス別サマリー
+- 異常ログ一覧
+- 通信品質サマリー
+
+主な集計項目:
+
+- 総フレーム数
+- CRC エラー数
+- フレーム途中切れ数
+- タイムアウト数
+- 応答時間の最小 / 平均 / 最大
+- スレーブごとの成功 / Timeout / CRC / 例外件数
+
+異常ログに含める代表例:
+
+- Timeout
+- CRC Error
+- Exception 応答
+- Frame truncated
+- 想定外応答
+
+注意:
+
+- 通信解析は受動監視であり、解析結果は `USB / RX` を基準に構築する
+- 通信解析モードでは `USB / TX` を新規送出しない

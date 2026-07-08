@@ -140,3 +140,25 @@ USB 読取は分割受信やノイズ混入を含みうる。
 - `app/src/main/java/com/example/meterdemo/usb/*`
 - `app/src/main/java/com/example/meterdemo/viewmodel/MainViewModel.kt`
 - `app/src/main/java/com/example/meterdemo/modbus/*`
+
+## 通信解析モードでの挙動
+
+通信解析モードは現場向けの受動監視モードである。
+
+要件:
+
+- 受信した USB シリアルデータはログ化と解析のみに使う
+- Modbus 応答は生成しても USB へ書き戻さない
+- 現場機器への影響を避けるため、RS-485 ラインに対する送信は行わない
+
+ViewModel での処理:
+
+1. 生バイト列を `USB / RX` として記録する
+2. 受信データを解析トラッカーへ渡す
+3. スレーブ別状態、異常、通信品質を更新する
+4. `UsbSerialConnectionManager.write(...)` は呼ばない
+
+通常のメーターデモモードとの差分:
+
+- メーターデモモード: 03H / 04H 要求を組み立てて必要に応じて応答する
+- 通信解析モード: 受信専用で、応答や Comm Test を行わない

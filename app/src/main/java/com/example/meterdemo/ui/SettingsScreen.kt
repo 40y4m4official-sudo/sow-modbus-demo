@@ -16,6 +16,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Translate
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.DropdownMenu
@@ -25,8 +27,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Translate
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -34,15 +34,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.res.stringResource
 import com.example.meterdemo.R
 import com.example.meterdemo.logging.CommLog
 import com.example.meterdemo.localization.AppLanguage
-import com.example.meterdemo.viewmodel.MainViewMode
+import com.example.meterdemo.viewmodel.AppMode
 import com.example.meterdemo.viewmodel.MainUiState
+import com.example.meterdemo.viewmodel.MainViewMode
 import com.example.meterdemo.viewmodel.UsbConnectionStatus
 
 @Composable
@@ -54,6 +55,7 @@ fun SettingsScreen(
     onOpenEditMeter: () -> Unit,
     onSlaveIdChange: (String) -> Unit,
     onApplySlaveId: () -> Unit,
+    onSelectAppMode: (AppMode) -> Unit,
     onToggleMainViewMode: () -> Unit,
     onLanguageSelected: (AppLanguage) -> Unit,
     onOpenLogs: () -> Unit,
@@ -80,7 +82,7 @@ fun SettingsScreen(
         modifier = Modifier
             .fillMaxSize()
             .safeDrawingPadding()
-        .padding(20.dp)
+            .padding(20.dp)
     ) {
         ScreenHeader(
             title = stringResource(R.string.settings_title),
@@ -123,6 +125,67 @@ fun SettingsScreen(
                 .weight(1f)
                 .verticalScroll(rememberScrollState())
         ) {
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = stringResource(R.string.settings_app_mode_title),
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = stringResource(R.string.settings_app_mode_description),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        if (uiState.appMode == AppMode.METER_DEMO) {
+                            Button(
+                                onClick = { onSelectAppMode(AppMode.METER_DEMO) },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text(stringResource(R.string.settings_mode_meter_demo))
+                            }
+                        } else {
+                            OutlinedButton(
+                                onClick = { onSelectAppMode(AppMode.METER_DEMO) },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text(stringResource(R.string.settings_mode_meter_demo))
+                            }
+                        }
+                        if (uiState.appMode == AppMode.COMM_ANALYSIS) {
+                            Button(
+                                onClick = { onSelectAppMode(AppMode.COMM_ANALYSIS) },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text(stringResource(R.string.settings_mode_comm_analysis))
+                            }
+                        } else {
+                            OutlinedButton(
+                                onClick = { onSelectAppMode(AppMode.COMM_ANALYSIS) },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text(stringResource(R.string.settings_mode_comm_analysis))
+                            }
+                        }
+                    }
+                    if (uiState.appMode == AppMode.COMM_ANALYSIS) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            text = stringResource(R.string.settings_analysis_warning),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
@@ -405,43 +468,45 @@ fun SettingsScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            if (uiState.appMode == AppMode.METER_DEMO) {
+                Spacer(modifier = Modifier.height(16.dp))
 
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        text = stringResource(R.string.settings_comm_test_title),
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = stringResource(
-                            R.string.settings_current_item,
-                            uiState.selectedPoint?.name ?: "-"
-                        ),
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Button(
-                        onClick = onSimulateRead,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(stringResource(R.string.settings_run_read))
-                    }
-                    Spacer(modifier = Modifier.height(12.dp))
-                    OutlinedTextField(
-                        value = customHex,
-                        onValueChange = { customHex = it },
-                        label = { Text(stringResource(R.string.settings_custom_hex_request)) },
-                        placeholder = { Text(stringResource(R.string.settings_custom_hex_placeholder)) },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    OutlinedButton(
-                        onClick = { onSimulateCustomRequest(customHex) },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(stringResource(R.string.settings_send_custom_request))
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            text = stringResource(R.string.settings_comm_test_title),
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = stringResource(
+                                R.string.settings_current_item,
+                                uiState.selectedPoint?.name ?: "-"
+                            ),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Button(
+                            onClick = onSimulateRead,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(stringResource(R.string.settings_run_read))
+                        }
+                        Spacer(modifier = Modifier.height(12.dp))
+                        OutlinedTextField(
+                            value = customHex,
+                            onValueChange = { customHex = it },
+                            label = { Text(stringResource(R.string.settings_custom_hex_request)) },
+                            placeholder = { Text(stringResource(R.string.settings_custom_hex_placeholder)) },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        OutlinedButton(
+                            onClick = { onSimulateCustomRequest(customHex) },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(stringResource(R.string.settings_send_custom_request))
+                        }
                     }
                 }
             }
@@ -503,5 +568,3 @@ fun SettingsScreen(
         }
     }
 }
-
-

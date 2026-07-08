@@ -11,6 +11,8 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.meterdemo.BuildConfig
 import com.example.meterdemo.R
+import com.example.meterdemo.analysis.CommunicationAnalysisSnapshot
+import com.example.meterdemo.analysis.CommunicationAnalysisTracker
 import com.example.meterdemo.localization.AppLanguage
 import com.example.meterdemo.localization.AppLanguageManager
 import com.example.meterdemo.logging.CommCategory
@@ -65,11 +67,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val usbDeviceScanner = UsbDeviceScanner(application)
     private val usbSerialScanner = UsbSerialScanner(application)
     private val usbRequestFrameAssembler = UsbRequestFrameAssembler()
+    private val communicationAnalysisTracker = CommunicationAnalysisTracker()
     private val simulationEngine = MeterSimulationEngine()
     private val currentAppVersion = resolveCurrentAppVersion(application.packageManager, application.packageName)
     private var simulationJob: Job? = null
     private var lastSimulationTickElapsedRealtime: Long? = null
     private var mainViewMode: MainViewMode = MainViewMode.CARD
+    private var appMode: AppMode = AppMode.METER_DEMO
     private var appLanguage: AppLanguage = appLanguageManager.getCurrentLanguage()
     private val usbSerialConnectionManager = UsbSerialConnectionManager(
         context = application,
@@ -102,6 +106,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     logger.info("USB serial disconnected: $deviceName ($reason)", CommCategory.USB)
                 }
                 usbRequestFrameAssembler.clear()
+                communicationAnalysisTracker.onDisconnected(System.currentTimeMillis())
                 refreshUiState(
                     selectedPointIndex = _uiState.value.selectedPointIndex,
                     usbConnectionStatus = UsbConnectionStatus.DISCONNECTED,
@@ -111,8 +116,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
 
             override fun onDataReceived(data: ByteArray) {
+                val timestamp = System.currentTimeMillis()
                 logger.rx(ModbusFrameParser.toHexString(data), "USB RX", CommCategory.USB)
-                appendUsbData(data)
+                appendUsbData(data, timestamp)
             }
 
             override fun onError(message: String) {
@@ -209,6 +215,22 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun toggleMainViewMode() {
         mainViewMode = mainViewMode.next()
+        persistState()
+        refreshUiState(selectedPointIndex = _uiState.value.selectedPointIndex)
+    }
+
+    fun selectAppMode(mode: AppMode) {
+        if (appMode == mode) return
+        appMode = mode
+        communicationAnalysisTracker.reset()
+        if (mode == AppMode.COMM_ANALYSIS) {
+            if (simulationJob != null) {
+                stopSimulation()
+            }
+            logger.info("Switched to communication analysis mode (passive)", CommCategory.SYSTEM)
+        } else {
+            logger.info("Switched to meter demo mode", CommCategory.SYSTEM)
+        }
         persistState()
         refreshUiState(selectedPointIndex = _uiState.value.selectedPointIndex)
     }
@@ -322,16 +344,25 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun clearLogs() {
         logger.clear()
+        communicationAnalysisTracker.reset()
         logger.info("Cleared logs")
         refreshUiState(selectedPointIndex = _uiState.value.selectedPointIndex)
     }
 
     fun simulateReadOfSelectedPoint() {
+        if (appMode == AppMode.COMM_ANALYSIS) {
+            logger.info("Communication test is disabled in analysis mode", CommCategory.SYSTEM)
+            return
+        }
         val point = _uiState.value.selectedPoint ?: return
         simulateRead(point.address)
     }
 
     fun simulateCustomRequest(hexText: String) {
+        if (appMode == AppMode.COMM_ANALYSIS) {
+            logger.info("Communication test is disabled in analysis mode", CommCategory.SYSTEM)
+            return
+        }
         val frame = parseHexString(hexText)
         if (frame == null) {
             logger.error("Failed to parse HEX request")
@@ -691,14 +722,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         usbSerialDevices: List<UsbSerialDeviceSummary> = _uiState.value.usbSerialDevices,
         usbConnectionStatus: UsbConnectionStatus = _uiState.value.usbConnectionStatus,
         connectedUsbDeviceName: String? = _uiState.value.connectedUsbDeviceName,
-        appLanguage: AppLanguage = _uiState.value.appLanguage,
+        appMode: AppMode = this.appMode,
+        appLanguage: AppLanguage = this.appLanguage,
         editingExistingUserMeter: Boolean = _uiState.value.editingExistingUserMeter,
         draftReadOnly: Boolean = _uiState.value.draftReadOnly,
         selectedEditableUserModelId: String? = _uiState.value.selectedEditableUserModelId,
         draftErrorMessage: String? = _uiState.value.draftErrorMessage,
         editMeterDraft: MeterEditorDraft = _uiState.value.editMeterDraft,
         simulationRunning: Boolean = _uiState.value.simulationRunning,
-        appUpdate: AppUpdateUiState = _uiState.value.appUpdate
+        appUpdate: AppUpdateUiState = _uiState.value.appUpdate,
+        communicationAnalysis: CommunicationAnalysisSnapshot = communicationAnalysisTracker.snapshot()
     ) {
         val snapshots = repository.snapshot()
         val safeIndex = when {
@@ -723,6 +756,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             usbSerialDevices = usbSerialDevices,
             usbConnectionStatus = usbConnectionStatus,
             connectedUsbDeviceName = connectedUsbDeviceName,
+            appMode = appMode,
             appLanguage = appLanguage,
             points = snapshots,
             selectedPointIndex = safeIndex,
@@ -731,6 +765,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             rawValueInput = rawValueInput ?: selectedPoint?.let { formatRawValueInput(it) }.orEmpty(),
             simulationRunning = simulationRunning,
             appUpdate = appUpdate,
+            communicationAnalysis = communicationAnalysis,
             editingExistingUserMeter = editingExistingUserMeter,
             draftReadOnly = draftReadOnly,
             selectedEditableUserModelId = selectedEditableUserModelId,
@@ -756,6 +791,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             usbSerialDevices = usbSerialScanner.scan(),
             usbConnectionStatus = UsbConnectionStatus.DISCONNECTED,
             connectedUsbDeviceName = null,
+            appMode = appMode,
             appLanguage = appLanguage,
             points = snapshots,
             selectedPointIndex = 0,
@@ -768,6 +804,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 currentVersionCode = currentAppVersion.versionCode,
                 statusMessage = appString(R.string.settings_update_ready)
             ),
+            communicationAnalysis = communicationAnalysisTracker.snapshot(),
             editingExistingUserMeter = false,
             draftReadOnly = false,
             selectedEditableUserModelId = null,
@@ -1107,7 +1144,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 selectedProfileModelId = repository.getProfile().modelId,
                 currentSlaveId = repository.getSlaveId(),
                 currentRawValues = repository.snapshot().associate { it.address to it.rawValue },
-                mainViewMode = mainViewMode
+                mainViewMode = mainViewMode,
+                appMode = appMode
             )
         )
     }
@@ -1126,6 +1164,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
         persisted.currentSlaveId?.let(repository::setSlaveId)
         mainViewMode = persisted.mainViewMode
+        appMode = persisted.appMode
         persisted.currentRawValues.forEach { (address, value) ->
             repository.setRawValue(address, value)
         }
@@ -1148,7 +1187,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    private fun appendUsbData(data: ByteArray) {
+    private fun appendUsbData(data: ByteArray, timestamp: Long) {
+        if (appMode == AppMode.COMM_ANALYSIS) {
+            communicationAnalysisTracker.onRawBytes(data, timestamp)
+            refreshUiState(selectedPointIndex = _uiState.value.selectedPointIndex)
+            return
+        }
         val assemblyResult = usbRequestFrameAssembler.append(
             data = data,
             expectedSlaveId = repository.getSlaveId(),
@@ -1167,6 +1211,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 logger.tx(ModbusFrameParser.toHexString(response), "USB TX", CommCategory.USB)
             }
         }
+        refreshUiState(selectedPointIndex = _uiState.value.selectedPointIndex)
     }
 
     override fun onCleared() {
@@ -1268,6 +1313,7 @@ data class MainUiState(
     val usbSerialDevices: List<UsbSerialDeviceSummary>,
     val usbConnectionStatus: UsbConnectionStatus,
     val connectedUsbDeviceName: String?,
+    val appMode: AppMode,
     val appLanguage: AppLanguage,
     val points: List<MeterValueSnapshot>,
     val selectedPointIndex: Int,
@@ -1276,6 +1322,7 @@ data class MainUiState(
     val rawValueInput: String,
     val simulationRunning: Boolean,
     val appUpdate: AppUpdateUiState,
+    val communicationAnalysis: CommunicationAnalysisSnapshot,
     val editingExistingUserMeter: Boolean,
     val draftReadOnly: Boolean,
     val selectedEditableUserModelId: String?,

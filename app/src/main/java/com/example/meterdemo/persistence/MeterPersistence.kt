@@ -6,6 +6,7 @@ import com.example.meterdemo.meter.model.MeterPoint
 import com.example.meterdemo.meter.model.MeterProfile
 import com.example.meterdemo.meter.model.SignalType
 import com.example.meterdemo.meter.model.WordByteOrder
+import com.example.meterdemo.viewmodel.AppMode
 import com.example.meterdemo.viewmodel.MainViewMode
 import org.json.JSONArray
 import org.json.JSONObject
@@ -31,6 +32,7 @@ class MeterPersistence(context: Context) {
             .put("selectedProfileModelId", state.selectedProfileModelId)
             .put("currentSlaveId", state.currentSlaveId)
             .put("mainViewMode", state.mainViewMode.name)
+            .put("appMode", state.appMode.name)
             .put("currentRawValues", JSONObject().apply {
                 state.currentRawValues.forEach { (address, value) ->
                     put(address.toString(), value)
@@ -63,7 +65,8 @@ class MeterPersistence(context: Context) {
             selectedProfileModelId = json.optString("selectedProfileModelId").ifBlank { null },
             currentSlaveId = json.optInt("currentSlaveId").takeIf { it in 1..247 },
             currentRawValues = rawValues,
-            mainViewMode = MainViewMode.fromStoredName(json.optString("mainViewMode", MainViewMode.CARD.name))
+            mainViewMode = MainViewMode.fromStoredName(json.optString("mainViewMode", MainViewMode.CARD.name)),
+            appMode = AppMode.fromStoredName(json.optString("appMode", AppMode.METER_DEMO.name))
         )
     }
 
@@ -147,5 +150,6 @@ data class PersistedMeterState(
     val selectedProfileModelId: String?,
     val currentSlaveId: Int?,
     val currentRawValues: Map<Int, Int>,
-    val mainViewMode: MainViewMode = MainViewMode.CARD
+    val mainViewMode: MainViewMode = MainViewMode.CARD,
+    val appMode: AppMode = AppMode.METER_DEMO
 )
